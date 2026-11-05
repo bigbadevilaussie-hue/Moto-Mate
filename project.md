@@ -16,18 +16,17 @@
 *   OS: iMac (2014 5K) running macOS Sonoma.
 *   Toolchain: Arduino IDE / CLI (Core v2.0.17 ONLY).
 *   **OTA Only:** Board will be flashed via USB once, then sealed.
-*   **Library Footprint:** All required libraries (TFT, BLE, GPS, Sensors, Gzip) consume ~68KB Flash (4%) and ~1.2KB RAM. Total baseline compile: 300KB (15% of 1.9MB).
+*   **Library Footprint:** All required libraries consume ~68KB Flash (4%) and ~1.2KB RAM. Total baseline compile: 300KB (15% of 1.9MB).
 
 ## Radio & Wi-Fi (Lessons from C3)
 *   **No Coexistence:** BLE and Wi-Fi will never run simultaneously. 
 *   **Transitions:** When entering Maintenance Mode (Wi-Fi), kill BLE first, wait 500ms, then bring up Wi-Fi.
-*   **Antenna:** External SMA antenna required for GPS. Wi-Fi relies on the S3's PCB antenna (no janky 31mm wire hacks like the C3).
 
 ## Power & Electrical Specs
 *   Power Source: 12V AGM Motorbike Battery.
 *   Sleep Constraint: Target sleep current <= 0.001 Amps (1mA).
-*   **Buck Converters:** MP1584EN for always-on rail (quiescent check mandatory). Mini 360 for switched 12V -> 5V (GPS).
-*   12V Switched Line: Clamped OFF by default (IRF4905). Does NOT wake the ESP32.
+*   **Buck Converters:** MP1584EN for always-on rail. Mini 360 for switched 12V -> 5V (GPS).
+*   12V Switched Line: Clamped OFF by default (IRF4905).
 *   **GPS Power:** Needs a separate 5V regulator on the switched line (NEO-6M does not take 12V).
 
 ## Operational Logic & Wake Cycles
@@ -43,7 +42,7 @@
 ## Storage Strategy (LittleFS)
 *   **Wake Log:** `wakes_YYYY-MM-DD.csv` (appended every 5 mins).
 *   **Ride Log:** `ride_*.csv` (created during Riding Mode).
-*   **4 AM Routine:** ESP32 wakes, connects to OSA via BLE, seals current file, gzips it (LZPacker), uploads it, deletes local copy, and opens a fresh file.
+*   **4 AM Routine:** ESP32 wakes, connects to OSA via BLE, seals current file, gzips it, uploads it, deletes local copy, and opens a fresh file.
 *   **Fail-Safe:** Keep max 7 days of un-uploaded logs. Delete oldest if LittleFS is full.
 
 ## Final Pinout (ESP32-S3 Super Mini) - EDGE PINS ONLY
@@ -74,6 +73,7 @@
 ## Case Constraints
 *   Printer: Bambu Lab A1 Mini. Material: PETG-BASIC.
 *   Board Size: 24x55 stripboard (~61mm x 140mm).
+*   **Case Design:** U-shape tube with removable front/back caps (M3 screws). Prints standing on its open end. Front faceplate has a "verandah" for the screen, holes for LEDs, wake button, and SHT40 vents.
 
 ## Parts List (Confirmed)
 1. Vero board 24x55 holes
@@ -84,25 +84,24 @@
 6. 2N2222 NPN Transistor (Buzzer)
 7. SHT40 Temp/Humidity Sensor (I2C)
 8. MPU-6050 6-Axis Accelerometer/Gyro Module (I2C)
-9. 1x Red LED & 1x Green LED
+9. 1x Red LED & 1x Green LED (5mm)
 10. 1x IRF4905 P-Channel MOSFET
 11. Resettable Fuse 30V PTC Polymer (3A)
 12. 15V Zener Diode
-13. 6x6mm Tactile Push Button
+13. **16mm Panel-Mount Momentary Push Button (Red)** - Wake Button
 14. 5x Mini 360 Buck Converters
 15. 30mm 5V Fan (Parts Cooler)
+16. **KF301-5.0 Screw Terminal Blocks (2-pin & 3-pin)**
+17. **M3 Screws (Countersunk) & Standoffs**
 
 ## MkII Hardware Upgrades (To Order)
 *   U.FL to SMA pigtail + External GPS Antenna
-*   Screw Terminal Blocks
-*   M3 Nylon Standoffs
-*   Female Header Strips
 *   Schottky Diode
 
 ---
 
 ## AI Design Review Highlights
-*(See old file for full quotes, but the key takeaways are:)*
+*(The full quotes are in the MkI repo, but the key takeaways are:)*
 *   **Claude:** Move MOSFET to GPIO 17 (avoid USB D+). Use V < 13.0V for riding exit. Crystal is optional.
 *   **GPT:** Button needs a state machine. Hysteresis is mandatory. Measure the 1mA target.
 *   **Grok:** Stop adding features. Measure the sleep current. Desolder the RGB LED.
