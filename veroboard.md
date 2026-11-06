@@ -1,39 +1,37 @@
 # Moto-Mate MkII - Veroboard & Wiring Guide
 
-## Netlist (Connections)
+## Netlist (Connections) - Corrected by Uncle Claude
 
 ### Power Input & Rail Generation
 | Net | Connects To |
 | :--- | :--- |
 | BATT+ | 12V Terminal Block, Kill Switch (In) |
-| 12V_MAIN | Kill Switch (Out), 3A Fuse, TVS Diode (Cathode) |
-| 12V_PROT | 3A Fuse (Out), 1N4007 (Anode), 1000uF Cap (Positive), MP1584EN IN+, IRF4905 Source, Voltage Divider (Top) |
-| GND | TVS (Anode), 1N4007 (Cathode), 1000uF Cap (Negative), MP1584EN IN-, ESP32 GND, Terminal Block GND, etc. |
-| 5V_ALWAYS | MP1584EN OUT+, Schottky Diode (Anode), Buzzer (via 2N2222), Voltage Divider (GND) |
-| 5V_ESP | Schottky Diode (Cathode), ESP32 5V Pin |
-| 12V_SWITCHED | IRF4905 Drain, Mini 360 IN+, 30mm Fan (+) |
-| 5V_SWITCHED | Mini 360 OUT+, GPS VCC, 30mm Fan (+) *(If fan is 5V)* |
+| 12V_FUSED | Kill Switch (Out), 3A Fuse (In) |
+| 12V_PROT | 3A Fuse (Out), 1N5401 (Anode), 1000uF Cap (Positive), TVS (Cathode), MP1584EN IN+, IRF4905 Source, 470k Resistor (Top) |
+| GND | 1N5401 (Cathode), 1000uF Cap (Negative), TVS (Anode), MP1584EN IN-, ESP32 GND, Terminal Block GND, 100k Resistor (Bottom), 10k Pull-downs, etc. |
+| 5V_ALWAYS | MP1584EN OUT+, Schottky (Anode), Buzzer (via 2N2222), 470k/100k Divider (GND side) |
+| 5V_ESP | Schottky (Cathode), ESP32 5V Pin |
+| 12V_SWITCHED | IRF4905 Drain, Mini 360 IN+, USB Charger (+) |
+| 5V_SWITCHED | Mini 360 OUT+, GPS VCC, 30mm Fan (+) |
 
 ### ESP32-S3 Connections
 | GPIO | Function | Connects To |
 | :--- | :--- | :--- |
-| GPIO 1 | Voltage Divider (ADC) | Junction of 470k/100k divider |
+| GPIO 1 | Voltage Divider (ADC) | Junction of 470k/100k divider (to GND) |
 | GPIO 2 | Buzzer | 1k Resistor -> 2N2222 Base |
 | GPIO 3 | Red LED | 330 ohm Resistor -> Red LED Anode |
-| GPIO 4 | TFT Backlight | IRLZ44N Gate (Source to GND) |
+| GPIO 4 | TFT Backlight | IRLZ44N Gate (Source to GND, 100k Pull-down to GND) |
 | GPIO 5 | 12V MOSFET Control + Green LED | 1k Resistor -> 2N2222 Base, 330 ohm -> Green LED Anode |
-| GPIO 6 | I2C SDA | SHT40 SDA, MPU-6050 SDA, 4.7k Pull-up to 3.3V |
-| GPIO 7 | I2C SCL | SHT40 SCL, MPU-6050 SCL, 4.7k Pull-up to 3.3V |
+| GPIO 6 | I2C SDA | SHT40 SDA, MPU-6050 SDA (No external pull-ups needed) |
+| GPIO 7 | I2C SCL | SHT40 SCL, MPU-6050 SCL (No external pull-ups needed) |
 | GPIO 8 | TFT Reset | ST7735 RESET |
 | GPIO 9 | TFT DC | ST7735 A0/DC |
 | GPIO 10 | TFT CS | ST7735 CS |
 | GPIO 11 | TFT MOSI | ST7735 SDA/MOSI |
 | GPIO 12 | TFT SCLK | ST7735 SCK |
 | GPIO 13 | Wake Button | 16mm Button to GND (10k Pull-up to 3.3V) |
-| GPIO 18 | Buzzer (PWM) | 2N2222 Collector (via Flyback Diode) |
-| GPIO 21 | TFT Backlight (PWM) | IRLZ44N Gate (Source to GND) |
-| GPIO 43 | GPS TX (ESP RX) | GPS TX |
-| GPIO 44 | GPS RX (ESP TX) | GPS RX (via 1k Resistor) |
+| GPIO 43 | GPS RX (ESP TX) | 1k Resistor -> GPS RX |
+| GPIO 44 | GPS TX (ESP RX) | GPS TX |
 
 ### 12V Switched Line Control (IRF4905 + 2N2222)
 | Component | Connection |
@@ -43,7 +41,7 @@
 | IRF4905 Gate | 10k Pull-up to 12V_PROT, 2N2222 Collector, 15V Zener (Cathode) |
 | 2N2222 Emitter | GND |
 | 2N2222 Base | GPIO 5 (via 1k Resistor), 10k Pull-down to GND |
-| 15V Zener Anode | 12V_PROT (Gate-Source protection) |
+| 15V Zener Anode | IRF4905 Gate (Cathode to Source/12V_PROT) |
 
 ### Sensors & Display
 | Component | Connections |
@@ -54,7 +52,7 @@
 
 ---
 
-## Bill of Materials (BOM)
+## Bill of Materials (BOM) - Corrected
 
 ### Active / Modules
 | Qty | Component | Purpose |
@@ -67,7 +65,7 @@
 | 1 | MP1584EN Buck Converter (12V -> 5V) | Always-On Power |
 | 1 | Mini 360 Buck Converter (12V -> 5V) | Switched Power (GPS/Fan) |
 | 1 | IRF4905 P-Channel MOSFET | 12V High-Side Switch |
-| 1 | 2N2222 NPN Transistor | MOSFET Driver |
+| 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver |
 | 1 | IRLZ44N N-Channel MOSFET | TFT Backlight Switch |
 | 1 | 30mm 5V Fan | Parts Cooler |
 | 1 | 16mm Panel-Mount Momentary Push Button | Wake Button |
@@ -77,20 +75,18 @@
 | :--- | :--- | :--- |
 | 1 | Resistor | 470k (Voltage Divider Top) |
 | 1 | Resistor | 100k (Voltage Divider Bottom) |
-| 2 | Resistor | 4.7k (I2C Pull-ups) |
 | 1 | Resistor | 10k (MOSFET Gate Pull-up) |
 | 1 | Resistor | 10k (Wake Button Pull-up) |
-| 1 | Resistor | 10k (2N2222 Base Pull-down) |
+| 2 | Resistor | 10k (2N2222 Base Pull-down, IRLZ44N Gate Pull-down) |
 | 3 | Resistor | 1k (MOSFET Driver, Buzzer, GPS TX) |
 | 2 | Resistor | 330 ohm (Red LED, Green LED) |
 | 1 | Capacitor | 1000uF 25V Electrolytic (12V Bulk) |
 | 1 | Capacitor | 1uF Ceramic (ADC Filter) |
 | 2 | Capacitor | 0.1uF Ceramic (Decoupling) |
 | 1 | Diode | SA16CA TVS (12V Protection) |
-| 1 | Diode | 1N4007 (Series Reverse Polarity) |
+| 1 | Diode | 1N5401 (Series Reverse Polarity, 3A) |
 | 1 | Diode | 1N5819 Schottky (USB Backfeed Protection) |
 | 1 | Diode | 15V Zener (IRF4905 Gate Protection) |
-| 1 | Diode | 1N4148 (Buzzer Flyback) |
 | 1 | Fuse | 3A PTC Resettable |
 | 1 | Crystal | 32.768kHz (Optional) |
 | 2 | Capacitor | 10-22pF (Crystal Load, Optional) |
@@ -101,7 +97,7 @@
 | Qty | Component | Purpose |
 | :--- | :--- | :--- |
 | 1 | 2-pin 5mm Screw Terminal | 12V Battery Input |
-| 1 | 3-pin 5mm Screw Terminal | GPS (5V, TX, RX) |
+| 1 | 4-pin 5mm Screw Terminal | GPS (5V, GND, TX, RX) |
 | 1 | 2-pin 5mm Screw Terminal | Fan (5V, GND) |
 | 1 | 24x55 Vero Board | Main PCB |
 | 4 | M3 Nylon Standoffs & Screws | Case Mounting |
