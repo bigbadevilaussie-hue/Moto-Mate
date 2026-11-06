@@ -21,6 +21,10 @@ The overengineered, colour-screen successor to Bike-Mate. Built clean from scrat
 *   OTA Updates (Wi-Fi Maintenance Mode only)
 *   LittleFS Logging with 4 AM Gzip/Upload Routine
 
+
+## Mandatory Code Requirements
+See `codeprt.md` for the non-negotiable software rules (sleep, GPIO holds, TFT polarity, MPU sleep, etc.).
+
 ## Hardware Spec
 See `project.md` for the full pinout and AI-reviewed design spec.
 
