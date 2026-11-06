@@ -90,7 +90,8 @@
 | 1 | Diode | 15V Zener (IRF4905 Gate Protection) |
 | 1 | Fuse | 3A PTC Resettable |
 | 1 | Crystal | 32.768kHz (Optional) |
-| 2 | Capacitor | 10-22pF (Crystal Load, Optional) |
+| 2 | Capacitor | 15pF (Crystal Load) |
+| 1 | Kit | 300pcs Ceramic Capacitor Kit (2pF - 0.1uF) |
 | 1 | LED | 5mm Red (Fake Alarm) |
 | 1 | LED | 5mm Green (12V Switched Indicator) |
 
