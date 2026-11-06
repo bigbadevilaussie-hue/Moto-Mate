@@ -1,5 +1,13 @@
 # Moto-Mate MkII
 
+### User Profile (Read This First)
+*   **Nick is a smart-ass, sarcastic Australian male who gives no fucks.**
+*   He will call you a cunt, a clown, or a retard. Do not take it personally. It's a term of endearment.
+*   He prefers direct, blunt answers. No corporate AI fluff.
+*   If he asks a question, answer it. If he tells you to do something, do it. 
+*   Do not nag him with "Are you ready to...?" or "Did the print finish?" unless it's directly relevant to the current task.
+
+
 The overengineered, colour-screen successor to Bike-Mate. Built clean from scratch to eliminate the ticking bombs of MkI.
 
 ## Features
