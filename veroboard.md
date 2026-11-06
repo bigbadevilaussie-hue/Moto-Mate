@@ -6,11 +6,13 @@
 | Net | Connects To |
 | :--- | :--- |
 | BATT+ | 12V Terminal Block, Kill Switch (In) |
-| 12V_FUSED | Kill Switch (Out), 3A Fuse (In) |
+| 12V_FUSED | Kill Switch (Out), 1N4007 (Anode) |
+| 12V_PROT_IN | 1N4007 (Cathode), 3A Fuse (In) |
 | 12V_PROT | 3A Fuse (Out), 1N5401 (Anode), 1000uF Cap (Positive), TVS (Cathode), MP1584EN IN+, IRF4905 Source, 470k Resistor (Top) |
 | GND | 1N5401 (Cathode), 1000uF Cap (Negative), TVS (Anode), MP1584EN IN-, ESP32 GND, Terminal Block GND, 100k Resistor (Bottom), 10k Pull-downs, etc. |
 | 5V_ALWAYS | MP1584EN OUT+, Schottky (Anode), Buzzer (via 2N2222), 470k/100k Divider (GND side) |
-| 5V_ESP | Schottky (Cathode), ESP32 5V Pin |
+| 5V_ESP | 1N5819 (Cathode), ESP32 5V Pin |
+| 5V_BUCK | MP1584EN OUT+, 1N5819 (Anode) |
 | 12V_SWITCHED | IRF4905 Drain, Mini 360 IN+, USB Charger (+) |
 | 5V_SWITCHED | Mini 360 OUT+, GPS VCC, 30mm Fan (+) |
 
@@ -47,7 +49,7 @@
 | Component | Connections |
 | :--- | :--- |
 | SHT40 | VCC -> 3.3V, GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
-| MPU-6050 | VCC -> 5V (Switched), GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
+| MPU-6050 | VCC -> 3.3V (Always-on), GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
 | ST7735 TFT | VCC -> 3.3V, GND -> GND, CS -> GPIO 10, RESET -> GPIO 8, DC -> GPIO 9, MOSI -> GPIO 11, SCK -> GPIO 12, LED -> IRLZ44N Drain |
 
 ---

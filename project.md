@@ -83,7 +83,7 @@
 5. IRLZ44N MOSFET (TFT Backlight)
 6. 2N2222 NPN Transistor (Buzzer)
 7. SHT40 Temp/Humidity Sensor (I2C)
-8. MPU-6050 6-Axis Accelerometer/Gyro Module (I2C)
+8. MPU-6050 6-Axis Accelerometer/Gyro Module (I2C, powered from 3.3V, sleep mode enabled)
 9. 1x Red LED & 1x Green LED (5mm)
 10. 1x IRF4905 P-Channel MOSFET
 11. Resettable Fuse 30V PTC Polymer (3A)
