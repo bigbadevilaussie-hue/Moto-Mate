@@ -65,7 +65,7 @@
 | 1 | MPU-6050 6-Axis Accelerometer/Gyro | Lean Angle / Motion |
 | 1 | NEO-6M GPS Module (with external SMA antenna) | Location |
 | 1 | MP1584EN Buck Converter (12V -> 5V) | Always-On Power |
-| 1 | Mini 360 Buck Converter (12V -> 5V) | Switched Power (GPS/Fan) |
+| 1 | MP1584EN Buck Converter (12V -> 5V) | Switched Power (GPS/MPU/Fan) |
 | 1 | IRF4905 P-Channel MOSFET | 12V High-Side Switch |
 | 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver (SFM-27) |
 | 1 | IRLZ44N N-Channel MOSFET | TFT Backlight Switch |
@@ -87,7 +87,7 @@
 | 1 | Capacitor | 1uF Ceramic (ADC Filter) |
 | 2 | Capacitor | 0.1uF Ceramic (Decoupling) |
 | 1 | Diode | SA16CA TVS (12V Protection) |
-| 1 | Diode | 1N5401 (Series Reverse Polarity, 3A) |
+| 1 | Diode | 1N4007 (Series Reverse Polarity) |
 | 1 | Diode | 1N5819 Schottky (USB Backfeed Protection) |
 | 1 | Diode | 15V Zener (IRF4905 Gate Protection) |
 | 1 | Fuse | 3A PTC Resettable |
