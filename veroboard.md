@@ -65,10 +65,11 @@
 | 1 | MP1584EN Buck Converter (12V -> 5V) | Always-On Power |
 | 1 | Mini 360 Buck Converter (12V -> 5V) | Switched Power (GPS/Fan) |
 | 1 | IRF4905 P-Channel MOSFET | 12V High-Side Switch |
-| 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver |
+| 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver (SFM-27) |
 | 1 | IRLZ44N N-Channel MOSFET | TFT Backlight Switch |
 | 1 | 30x30x10mm 5V Fan (0.15A) | Parts Cooler |
 | 1 | 16mm Panel-Mount Momentary Push Button | Wake Button |
+| 1 | 12V 20A Circular Rocker Switch (20mm) | Kill Switch |
 
 ### Passive Components
 | Qty | Component | Value / Spec |
@@ -100,5 +101,5 @@
 | 1 | 4-pin 5mm Screw Terminal | GPS (5V, GND, TX, RX) |
 | 1 | 2-pin 5mm Screw Terminal | Fan (5V, GND) |
 | 1 | 24x55 Vero Board | Main PCB |
-| 4 | M3 Nylon Standoffs & Screws | Case Mounting |
+| 4 | M3 Heat-set Inserts & Screws | Case Mounting (for tube/caps) |
 | 1 | U.FL to SMA Pigtail | GPS Antenna Connection |
