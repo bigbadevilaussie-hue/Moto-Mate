@@ -47,7 +47,7 @@
 | Component | Connections |
 | :--- | :--- |
 | SHT40 | VCC -> 3.3V, GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
-| MPU-6050 | VCC -> 3.3V, GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
+| MPU-6050 | VCC -> 5V (Switched), GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
 | ST7735 TFT | VCC -> 3.3V, GND -> GND, CS -> GPIO 10, RESET -> GPIO 8, DC -> GPIO 9, MOSI -> GPIO 11, SCK -> GPIO 12, LED -> IRLZ44N Drain |
 
 ---
