@@ -49,7 +49,7 @@
 *   **GPIO 1:** Voltage Divider (ADC)
 *   **GPIO 2:** Buzzer (via 2N2222)
 *   **GPIO 3:** Red LED (Fake Alarm) 
-*   **GPIO 4:** TFT Backlight (via IRLZ44N)
+*   **GPIO 4:** TFT Backlight (Direct Drive, active-high)
 *   **GPIO 5:** 12V MOSFET Control **+ Green LED**
 *   **GPIO 6:** I2C SDA
 *   **GPIO 7:** I2C SCL

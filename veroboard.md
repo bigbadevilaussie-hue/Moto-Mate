@@ -22,7 +22,7 @@
 | GPIO 1 | Voltage Divider (ADC) | Junction of 470k/100k divider (to GND) |
 | GPIO 2 | Buzzer | 1k Resistor -> 2N2222 Base |
 | GPIO 3 | Red LED | 330 ohm Resistor -> Red LED Anode |
-| GPIO 4 | TFT Backlight | IRLZ44N Gate (Source to GND, 100k Pull-down to GND) |
+| GPIO 4 | TFT Backlight | Direct connection (active-high, no MOSFET) |
 | GPIO 5 | 12V MOSFET Control + Green LED | 1k Resistor -> 2N2222 Base, 330 ohm -> Green LED Anode |
 | GPIO 6 | I2C SDA | SHT40 SDA, MPU-6050 SDA (No external pull-ups needed) |
 | GPIO 7 | I2C SCL | SHT40 SCL, MPU-6050 SCL (No external pull-ups needed) |
