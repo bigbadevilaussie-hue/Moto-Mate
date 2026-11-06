@@ -90,7 +90,7 @@
 12. 15V Zener Diode
 13. **16mm Panel-Mount Momentary Push Button (Red)** - Wake Button
 14. 5x Mini 360 Buck Converters
-15. 30mm 5V Fan (Parts Cooler)
+15. 30x30x10mm 5V Fan (0.15A, Parts Cooler)
 16. **KF301-5.0 Screw Terminal Blocks (2-pin & 3-pin)**
 17. **M3 Screws (Countersunk) & Standoffs**
 

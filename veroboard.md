@@ -67,7 +67,7 @@
 | 1 | IRF4905 P-Channel MOSFET | 12V High-Side Switch |
 | 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver |
 | 1 | IRLZ44N N-Channel MOSFET | TFT Backlight Switch |
-| 1 | 30mm 5V Fan | Parts Cooler |
+| 1 | 30x30x10mm 5V Fan (0.15A) | Parts Cooler |
 | 1 | 16mm Panel-Mount Momentary Push Button | Wake Button |
 
 ### Passive Components
