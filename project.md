@@ -33,7 +33,7 @@
 *   Primary Wake (Parked): RTC timer every 5 minutes.
 *   **Engine Run Detection:** Enter Riding Mode at >13.2V for 5s. Exit at <13.0V for 30s OR no motion for 5m.
 *   Riding Mode: Stay awake continuously. Power GPS, log data.
-*   GPS Serial: `Serial1.begin(9600, SERIAL_8N1, 44, 43)` (UART1). UART0 is used for USB CDC debugging and is not connected to the GPS.
+*   GPS Serial: `Serial1.begin(9600, SERIAL_8N1, 44, 43)` (UART1). UART0 is used for USB CDC debugging. **Note:** ESP32 TX (GPIO 43) connects to GPS RX via a 1k resistor to prevent back-powering.
 
 ## Button Logic (Wake Button on GPIO 13)
 *   Single Click: "Rider Ready" mode. Double Click: Battery Check. Triple Click: Maintenance Mode.

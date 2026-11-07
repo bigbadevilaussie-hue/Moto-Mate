@@ -33,8 +33,8 @@
 | GPIO 11 | TFT MOSI | ST7735 SDA/MOSI |
 | GPIO 12 | TFT SCLK | ST7735 SCK |
 | GPIO 13 | Wake Button | 16mm Button to GND (10k Pull-up to 3.3V) |
-| GPIO 43 | GPS RX (ESP TX) | 1k Resistor -> GPS RX |
-| GPIO 44 | GPS TX (ESP RX) | GPS TX (No 1K resistor needed, direct connection) |
+| GPIO 43 | GPS TX (ESP TX) | 1k Resistor (R12) -> GPS RX |
+| GPIO 44 | GPS RX (ESP RX) | GPS TX (Direct connection, no resistor) |
 
 ### 12V Switched Line Control (IRF4905 + 2N2222)
 | Component | Connection |
