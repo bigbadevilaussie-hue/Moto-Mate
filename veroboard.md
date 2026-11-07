@@ -14,7 +14,8 @@
 | 5V_ESP | 1N5819 (Cathode), ESP32 5V Pin |
 | 5V_BUCK | MP1584EN OUT+, 1N5819 (Anode) |
 | 12V_SWITCHED | IRF4905 Drain, Mini 360 IN+, USB Charger (+) |
-| 5V_SWITCHED | Mini 360 OUT+, GPS VCC, 30mm Fan (+) |
+| 5V_SWITCHED | MP1584EN OUT+, L1 (10uH), 30mm Fan (+) |
+| GPS_VCC | L1 (10uH), GPS VCC, C5 (100nF), C6 (470uF) |
 
 ### ESP32-S3 Connections
 | GPIO | Function | Connects To |
@@ -33,7 +34,7 @@
 | GPIO 12 | TFT SCLK | ST7735 SCK |
 | GPIO 13 | Wake Button | 16mm Button to GND (10k Pull-up to 3.3V) |
 | GPIO 43 | GPS RX (ESP TX) | 1k Resistor -> GPS RX |
-| GPIO 44 | GPS TX (ESP RX) | GPS TX |
+| GPIO 44 | GPS TX (ESP RX) | GPS TX (No 1K resistor needed, direct connection) |
 
 ### 12V Switched Line Control (IRF4905 + 2N2222)
 | Component | Connection |

@@ -27,13 +27,13 @@
 *   Sleep Constraint: Target sleep current <= 0.001 Amps (1mA).
 *   **Buck Converters:** MP1584EN for always-on rail. Mini 360 for switched 12V -> 5V (GPS).
 *   12V Switched Line: Clamped OFF by default (IRF4905).
-*   **GPS Power:** Needs a separate 5V regulator on the switched line (NEO-6M does not take 12V).
+*   **GPS Power:** 5V from switched buck, filtered through a 10uH inductor (L1) and 100nF + 470uF caps (C5, C6).
 
 ## Operational Logic & Wake Cycles
 *   Primary Wake (Parked): RTC timer every 5 minutes.
 *   **Engine Run Detection:** Enter Riding Mode at >13.2V for 5s. Exit at <13.0V for 30s OR no motion for 5m.
 *   Riding Mode: Stay awake continuously. Power GPS, log data.
-*   GPS Serial: `Serial1.begin(9600, SERIAL_8N1, 44, 43)` with USB CDC enabled.
+*   GPS Serial: `Serial1.begin(9600, SERIAL_8N1, 44, 43)` (UART1). UART0 is used for USB CDC debugging and is not connected to the GPS.
 
 ## Button Logic (Wake Button on GPIO 13)
 *   Single Click: "Rider Ready" mode. Double Click: Battery Check. Triple Click: Maintenance Mode.

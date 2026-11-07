@@ -17,6 +17,7 @@
 #define TFT_MOSI_PIN     11   // GPIO 11
 #define TFT_SCLK_PIN     12   // GPIO 12
 #define WAKE_BTN_PIN     13   // GPIO 13
+// UART0 is used for USB CDC (debugging). UART1 is used for GPS.
 #define GPS_RX_PIN       44   // GPIO 44 (ESP RX)
 #define GPS_TX_PIN       43   // GPIO 43 (ESP TX, optional)
 
