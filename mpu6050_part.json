@@ -1,0 +1,165 @@
+{
+  "format": "stripboard-editor-parts",
+  "version": 1,
+  "parts": [
+    {
+      "id": "library-part",
+      "name": "MPU-6050",
+      "category": "generic",
+      "symbol": "custom-footprint-library-part",
+      "defaultLabelPrefix": "U",
+      "width": 4,
+      "height": 8,
+      "pins": [
+        {
+          "id": "1",
+          "name": "VCC",
+          "offsetRow": 0,
+          "offsetCol": 0
+        },
+        {
+          "id": "2",
+          "name": "GND",
+          "offsetRow": 1,
+          "offsetCol": 0
+        },
+        {
+          "id": "3",
+          "name": "SCL",
+          "offsetRow": 2,
+          "offsetCol": 0
+        },
+        {
+          "id": "4",
+          "name": "SDA",
+          "offsetRow": 3,
+          "offsetCol": 0
+        },
+        {
+          "id": "5",
+          "name": "XDA",
+          "offsetRow": 4,
+          "offsetCol": 0
+        },
+        {
+          "id": "6",
+          "name": "XCL",
+          "offsetRow": 5,
+          "offsetCol": 0
+        },
+        {
+          "id": "7",
+          "name": "ADO",
+          "offsetRow": 6,
+          "offsetCol": 0
+        },
+        {
+          "id": "8",
+          "name": "INT",
+          "offsetRow": 7,
+          "offsetCol": 0
+        }
+      ],
+      "bodyCells": [
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 2
+        },
+        {
+          "row": 0,
+          "col": 3
+        },
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 1,
+          "col": 2
+        },
+        {
+          "row": 1,
+          "col": 3
+        },
+        {
+          "row": 2,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 2,
+          "col": 3
+        },
+        {
+          "row": 3,
+          "col": 1
+        },
+        {
+          "row": 3,
+          "col": 2
+        },
+        {
+          "row": 3,
+          "col": 3
+        },
+        {
+          "row": 4,
+          "col": 1
+        },
+        {
+          "row": 4,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 3
+        },
+        {
+          "row": 5,
+          "col": 1
+        },
+        {
+          "row": 5,
+          "col": 2
+        },
+        {
+          "row": 5,
+          "col": 3
+        },
+        {
+          "row": 6,
+          "col": 1
+        },
+        {
+          "row": 6,
+          "col": 2
+        },
+        {
+          "row": 6,
+          "col": 3
+        },
+        {
+          "row": 7,
+          "col": 1
+        },
+        {
+          "row": 7,
+          "col": 2
+        },
+        {
+          "row": 7,
+          "col": 3
+        }
+      ],
+      "group": "Sensors",
+      "description": "MPU-6050 6-Axis Accelerometer/Gyro Module (GY-521)"
+    }
+  ]
+}

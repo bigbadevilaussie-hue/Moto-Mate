@@ -1,0 +1,273 @@
+{
+  "format": "stripboard-editor-parts",
+  "version": 1,
+  "parts": [
+    {
+      "id": "library-part",
+      "name": "ESP32-S3 SuperMini",
+      "category": "generic",
+      "symbol": "custom-footprint-library-part",
+      "defaultLabelPrefix": "U",
+      "width": 6,
+      "height": 9,
+      "pins": [
+        {
+          "id": "1",
+          "name": "TX",
+          "offsetRow": 0,
+          "offsetCol": 0
+        },
+        {
+          "id": "2",
+          "name": "5V",
+          "offsetRow": 0,
+          "offsetCol": 5
+        },
+        {
+          "id": "3",
+          "name": "RX",
+          "offsetRow": 1,
+          "offsetCol": 0
+        },
+        {
+          "id": "4",
+          "name": "GND",
+          "offsetRow": 1,
+          "offsetCol": 5
+        },
+        {
+          "id": "5",
+          "name": "GPIO1",
+          "offsetRow": 2,
+          "offsetCol": 0
+        },
+        {
+          "id": "6",
+          "name": "3V3",
+          "offsetRow": 2,
+          "offsetCol": 5
+        },
+        {
+          "id": "7",
+          "name": "GPIO2",
+          "offsetRow": 3,
+          "offsetCol": 0
+        },
+        {
+          "id": "8",
+          "name": "GPIO13",
+          "offsetRow": 3,
+          "offsetCol": 5
+        },
+        {
+          "id": "9",
+          "name": "GPIO3",
+          "offsetRow": 4,
+          "offsetCol": 0
+        },
+        {
+          "id": "10",
+          "name": "GPIO12",
+          "offsetRow": 4,
+          "offsetCol": 5
+        },
+        {
+          "id": "11",
+          "name": "GPIO4",
+          "offsetRow": 5,
+          "offsetCol": 0
+        },
+        {
+          "id": "12",
+          "name": "GPIO11",
+          "offsetRow": 5,
+          "offsetCol": 5
+        },
+        {
+          "id": "13",
+          "name": "GPIO5",
+          "offsetRow": 6,
+          "offsetCol": 0
+        },
+        {
+          "id": "14",
+          "name": "GPIO10",
+          "offsetRow": 6,
+          "offsetCol": 5
+        },
+        {
+          "id": "15",
+          "name": "GPIO6",
+          "offsetRow": 7,
+          "offsetCol": 0
+        },
+        {
+          "id": "16",
+          "name": "GPIO9",
+          "offsetRow": 7,
+          "offsetCol": 5
+        },
+        {
+          "id": "17",
+          "name": "GPIO7",
+          "offsetRow": 8,
+          "offsetCol": 0
+        },
+        {
+          "id": "18",
+          "name": "GPIO8",
+          "offsetRow": 8,
+          "offsetCol": 5
+        }
+      ],
+      "bodyCells": [
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 2
+        },
+        {
+          "row": 0,
+          "col": 3
+        },
+        {
+          "row": 0,
+          "col": 4
+        },
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 1,
+          "col": 2
+        },
+        {
+          "row": 1,
+          "col": 3
+        },
+        {
+          "row": 1,
+          "col": 4
+        },
+        {
+          "row": 2,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 2,
+          "col": 3
+        },
+        {
+          "row": 2,
+          "col": 4
+        },
+        {
+          "row": 3,
+          "col": 1
+        },
+        {
+          "row": 3,
+          "col": 2
+        },
+        {
+          "row": 3,
+          "col": 3
+        },
+        {
+          "row": 3,
+          "col": 4
+        },
+        {
+          "row": 4,
+          "col": 1
+        },
+        {
+          "row": 4,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 3
+        },
+        {
+          "row": 4,
+          "col": 4
+        },
+        {
+          "row": 5,
+          "col": 1
+        },
+        {
+          "row": 5,
+          "col": 2
+        },
+        {
+          "row": 5,
+          "col": 3
+        },
+        {
+          "row": 5,
+          "col": 4
+        },
+        {
+          "row": 6,
+          "col": 1
+        },
+        {
+          "row": 6,
+          "col": 2
+        },
+        {
+          "row": 6,
+          "col": 3
+        },
+        {
+          "row": 6,
+          "col": 4
+        },
+        {
+          "row": 7,
+          "col": 1
+        },
+        {
+          "row": 7,
+          "col": 2
+        },
+        {
+          "row": 7,
+          "col": 3
+        },
+        {
+          "row": 7,
+          "col": 4
+        },
+        {
+          "row": 8,
+          "col": 1
+        },
+        {
+          "row": 8,
+          "col": 2
+        },
+        {
+          "row": 8,
+          "col": 3
+        },
+        {
+          "row": 8,
+          "col": 4
+        }
+      ],
+      "group": "Microcontrollers & modules",
+      "description": "ESP32-S3 Super Mini (HW-747)"
+    }
+  ]
+}

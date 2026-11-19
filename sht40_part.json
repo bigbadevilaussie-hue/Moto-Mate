@@ -1,0 +1,125 @@
+{
+  "format": "stripboard-editor-parts",
+  "version": 1,
+  "parts": [
+    {
+      "id": "library-part",
+      "name": "SHT40",
+      "category": "generic",
+      "symbol": "custom-footprint-library-part",
+      "defaultLabelPrefix": "U",
+      "width": 4,
+      "height": 6,
+      "pins": [
+        {
+          "id": "1",
+          "name": "VIN",
+          "offsetRow": 5,
+          "offsetCol": 0
+        },
+        {
+          "id": "2",
+          "name": "GND",
+          "offsetRow": 5,
+          "offsetCol": 1
+        },
+        {
+          "id": "3",
+          "name": "SCL",
+          "offsetRow": 5,
+          "offsetCol": 2
+        },
+        {
+          "id": "4",
+          "name": "SDA",
+          "offsetRow": 5,
+          "offsetCol": 3
+        }
+      ],
+      "bodyCells": [
+        {
+          "row": 0,
+          "col": 0
+        },
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 2
+        },
+        {
+          "row": 0,
+          "col": 3
+        },
+        {
+          "row": 1,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 1,
+          "col": 2
+        },
+        {
+          "row": 1,
+          "col": 3
+        },
+        {
+          "row": 2,
+          "col": 0
+        },
+        {
+          "row": 2,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 2
+        },
+        {
+          "row": 2,
+          "col": 3
+        },
+        {
+          "row": 3,
+          "col": 0
+        },
+        {
+          "row": 3,
+          "col": 1
+        },
+        {
+          "row": 3,
+          "col": 2
+        },
+        {
+          "row": 3,
+          "col": 3
+        },
+        {
+          "row": 4,
+          "col": 0
+        },
+        {
+          "row": 4,
+          "col": 1
+        },
+        {
+          "row": 4,
+          "col": 2
+        },
+        {
+          "row": 4,
+          "col": 3
+        }
+      ],
+      "group": "Sensors",
+      "description": "SHT40 Temp/Humidity Sensor"
+    }
+  ]
+}
