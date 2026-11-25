@@ -4,11 +4,24 @@ Last updated: 2026-11-25
 Status: pre-port baseline; documentation only.  
 Read this file first when starting a new Moto-Mate chat, then inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
+## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
+
+The owner's overriding requirement: "Save the Battery at all costs. dont let the tool be the bigger drain. collect all data to diagnose the battery and chanrging system."
+
+Moto-Mate is a battery and charging-system diagnostic instrument. It must not become a significant parasitic load or contribute to the problem it is diagnosing. Battery preservation takes priority over convenience features, display uptime, connectivity and unnecessary activity.
+
+Engineering implications (implementation subject to owner direction and evidence):
+- Minimise total current at the AGM battery terminals, including regulators, peripherals, leakage, LEDs, GPS, display, and radio activity; the existing parked deep-sleep target is <=1 mA, not yet verified on Moto-Mate.
+- Account for wake-up energy and radio/upload retries as well as steady sleep current; measure average parked consumption over representative wake cycles. Prevent indefinite awake states or retry loops when parked.
+- Capture diagnostically useful battery voltage, timestamps, temperature, rest/discharge trends, cranking voltage sag, charging voltage and ride/engine-state transitions where the hardware and sampling permit. Preserve useful raw readings and existing diagnostic history. Do not claim to measure current, capacity or state of health directly without suitable hardware and evidence.
+- Preserve logs across sleeps and failed uploads; defer nonessential activity when battery preservation requires it. Retain the proven donor software wherever possible and do not modify protected BLE/Wi-Fi code without demonstrated necessity and discussion.
+- Validate the effect of changes on the battery budget before accepting them. Exact low-voltage cutoffs, sampling cadence changes and retry limits require review against the donor and owner agreement; do not invent or implement them in this handover.
+
 ## 1. Major project rule: DIRECT PORT, NOT A REWRITE
 
 Moto-Mate MkII is Bike-Mate running on a different ESP32 with new peripheral modules. The owner's target is to reuse approximately 95% of both existing ESP32 firmware and GUI code. This is a target, not a measured percentage.
 
-- Bike-Mate is the software donor and working reference.
+- Bike-Mate is the software donor and working reference. The owner confirms it was physically built, installed on the bike and worked; Moto-Mate exists because the owner wanted a better design, not because Bike-Mate failed.
 - Moto-Mate is the new hardware platform and destination repository.
 - The GUI is essentially a straight copy, not a new application or redesign.
 - Preserve proven logic, interfaces, behaviour, timings, data formats and communication protocols. Adapt only what the new hardware or agreed project requirements actually demand.
@@ -28,6 +41,7 @@ GitHub access to all three repositories was verified with read, write and admin 
 - State exactly what changed, commit reference, what was actually tested and what remains unverified. Give a specific verification step.
 - Do not pretend a GitHub commit has been pulled, built, flashed or deployed on the iMac.
 - If local shell work is unavoidable, follow README patch discipline: zsh multiline/history-expansion issues, Python patch scripts under /tmp, fail on missing anchors. Prefer direct GitHub edits when requested.
+- Every terminal command provided to the owner must start with cd. Verified local Moto-Mate repository: /Users/nick/Documents/Arduino/motomate (origin is the Moto-Mate GitHub repository).
 - Keep replies direct, practical, and concise. No unsolicited lectures or work/rest suggestions.
 - Maintain this handover as project decisions and baselines change; use the latest Git state rather than treating old snapshots as current.
 - Never commit or disclose Config.local.h, credentials or tokens. Verify ignore rules before any local configuration is added.
