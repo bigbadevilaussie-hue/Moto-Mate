@@ -85,7 +85,7 @@ Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-r
 
 ## Build status
 
-**V1.04 — fresh coordinator foundation (owner approved); Arduino compile pending.** See [runtime-framework.md](runtime-framework.md). The exact Runtime.h and native tests passed host C++11 compilation and assertions. No hardware/radio enable or real deep sleep; bench-only. V1.03 remains the last owner-verified Arduino build.
+**V1.05 — USB commissioning stage (pending owner compile/run).** Serial banner, hardware/OTA/LittleFS diagnostics, erased-only filesystem provisioning, DHCP Wi-Fi bench test and Opal LAN/NTP clock test, Wi-Fi shutdown. BLE/OSA explicitly pending (protected manager dependencies); no physical TFT, GPIO outputs, field sleep or sensor tests. Wi-Fi bench requests 20 dBm ceiling; no production TX change. V1.04 owner compile/upload and full runtime PASS: 342389 B flash, 19888 B static RAM, zero overruns on complete capture (max gap 8005 us, max service 6680 us, deadline 10000137 us). Earlier partial run had one 100 ms overrun. Use incremental compile (no --clean), upload with esptool 5.6.0 override `upload.pattern`, CoolTerm 115200 USB CDC; disconnect it before upload. No credentials in Git.
 
 **Latest baseline: V1.03 — owner compile/link PASS (2026-11-26).** Commit [b2d36d8](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/b2d36d88605a7b6ffeae97e979727b6713cb3b35): 386841 B flash, 20528 B static RAM, 307152 B remaining. Splash framework with seven modes and dynamic version; off-screen test only, final artwork and runtime pending. See [assets/display/README.md](assets/display/README.md). The V1.02 baseline below is retained for comparison.
 

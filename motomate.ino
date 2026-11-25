@@ -1,22 +1,25 @@
 #include "Config.h"
 #include "Runtime.h"
 #include "BenchDiagnostics.h"
+#include "BenchCommission.h"
 #include <esp_sleep.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
 namespace {
-// V1.04 is a USB bench framework, not field firmware. These are test
-// budgets only; no hardware is powered up and no deep sleep is entered.
-constexpr mm::TimeUs BENCH_WAKE_US = 10000000;
-constexpr mm::TimeUs USB_SETTLE_US = 1500000;
+// V1.05 USB-only commissioning; longer test deadline for radio/clock.
+constexpr mm::TimeUs BENCH_WAKE_US = 90000000;
+constexpr mm::TimeUs USB_SETTLE_US = 3000000;
 constexpr mm::TimeUs DISPLAY_TEST_BUDGET_US = 250000;
 constexpr mm::TimeUs REPORT_BUDGET_US = 10000;
 mm::Coordinator runtime(BENCH_WAKE_US);
 mm::Periodic reportTimer(1000000);
 mm::State reportedState = mm::State::Boot;
 esp_sleep_wakeup_cause_t wakeCause;
+enum class BootStage { Banner, Display, Storage, RadioStart, RadioPoll, Summary };
+BootStage bootStage = BootStage::Banner;
+bool displayOK = false, storageOK = false, radioOK = false;
 
 mm::TimeUs nowUs() {
   return static_cast<mm::TimeUs>(esp_timer_get_time());
@@ -32,16 +35,53 @@ void reportMetrics() {
 }
 
 void serviceBoot(mm::TimeUs now) {
-  // Defer one-off diagnostics for USB enumeration; never block setup.
   if (runtime.awakeUs(now) < USB_SETTLE_US) return;
-  Serial.println("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION);
-  Serial.printf("[WAKE] cause=%d; BENCH framework\n", static_cast<int>(wakeCause));
   const auto started = nowUs();
-  const bool passed = runBenchDisplayDiagnostics();
-  const auto ended = nowUs();
-  runtime.recordService(ended - started, DISPLAY_TEST_BUDGET_US);
-  runtime.finishBoot(ended, passed);
-  reportTimer.start(ended);
+  mm::TimeUs budget = DISPLAY_TEST_BUDGET_US;
+  switch (bootStage) {
+    case BootStage::Banner:
+      commissionBanner(int(wakeCause));
+      bootStage = BootStage::Display;
+      break;
+    case BootStage::Display:
+      displayOK = runBenchDisplayDiagnostics();
+      bootStage = BootStage::Storage;
+      break;
+    case BootStage::Storage:
+      budget = 2000000;
+      storageOK = commissionStorage();
+      bootStage = storageOK && displayOK ? BootStage::RadioStart : BootStage::Summary;
+      break;
+    case BootStage::RadioStart:
+      commissionRadioBegin();
+      bootStage = BootStage::RadioPoll;
+      break;
+    case BootStage::RadioPoll:
+      budget = 250000;
+      if (commissionRadioPoll()) {
+        radioOK = commissionRadioPassed();
+        bootStage = BootStage::Summary;
+      }
+      break;
+    case BootStage::Summary: {
+      const bool passed = displayOK && storageOK && radioOK;
+      Serial.println("\n+================ COMMISSIONING REPORT ================+");
+      Serial.printf("[RESULT] sprite=%s storage=%s wifi/clock/off=%s\n",
+          displayOK?"PASS":"FAIL", storageOK?"PASS":"FAIL",
+          (displayOK && storageOK) ? (radioOK?"PASS":"FAIL") : "SKIPPED");
+      Serial.println("[RESULT] BLE/OSA=PENDING; physical TFT/sensors/sleep=NOT TESTED");
+      Serial.println(passed ? "[RESULT] IMPLEMENTED TESTS PASS; COMMISSIONING INCOMPLETE"
+                            : "[RESULT] FAIL; inspect diagnostics above");
+      Serial.println("[MODE] BENCH / deep sleep inhibited");
+      Serial.println("+======================================================+");
+      const auto ended = nowUs();
+      runtime.recordService(ended - started, budget);
+      runtime.finishBoot(ended, passed);
+      reportTimer.start(ended);
+      return;
+    }
+  }
+  runtime.recordService(nowUs() - started, budget);
 }
 
 void serviceMonitoring(mm::TimeUs now) {
@@ -92,6 +132,7 @@ void loop() {
       break;
     case mm::State::BenchIdle:
     case mm::State::Fault:
+      commissionRadioCancel();
       // Terminal bench states; no fake successful service or reset loop.
       break;
   }

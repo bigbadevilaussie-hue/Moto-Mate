@@ -1,7 +1,7 @@
 # Moto-Mate — AI Handover
 
 Last updated: 2026-11-26  
-Status: V1.04 fresh coordinator foundation implemented with owner approval; native core tests passed, Arduino compile and hardware runtime pending. V1.03 last owner-verified compile. See [runtime-framework.md](runtime-framework.md).  
+Status: **V1.05 — USB commissioning stage (pending owner compile/run).** Serial banner, hardware/OTA/LittleFS diagnostics, erased-only filesystem provisioning, DHCP Wi-Fi bench test and Opal LAN/NTP clock test, Wi-Fi shutdown. BLE/OSA explicitly pending (protected manager dependencies); no physical TFT, GPIO outputs, field sleep or sensor tests. Wi-Fi bench requests 20 dBm ceiling; no production TX change. V1.04 owner compile/upload and full runtime PASS: 342389 B flash, 19888 B static RAM, zero overruns on complete capture (max gap 8005 us, max service 6680 us, deadline 10000137 us). Earlier partial run had one 100 ms overrun. Use incremental compile (no --clean), upload with esptool 5.6.0 override `upload.pattern`, CoolTerm 115200 USB CDC; disconnect it before upload. No credentials in Git. See [runtime-framework.md](runtime-framework.md).  
 Read this file first when starting a new Moto-Mate chat, then read [operating-design.md](operating-design.md) (latest owner decisions, architecture, maintenance workflow, priorities, GUI/OSA audit and predictive diagnostics), inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
 ## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
