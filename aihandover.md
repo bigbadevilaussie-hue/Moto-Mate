@@ -34,6 +34,8 @@ The owner now explicitly requests auditing and cleaning ESP32 code as it is port
 
 ## 2. Ownership and workflow
 
+**Read the complete owner rules in [README.md — Rules](README.md#rules) before doing any work.** All six original rule categories are preserved verbatim there, with explicit Moto-Mate precedence for GitHub patch ownership, cd-first shell commands, versioning and the S3 toolchain. Do not rely on the abbreviated workflow bullets below instead of reading the full rules.
+
 ChatGPT is the technical lead for Moto-Mate and is responsible for performing all requested patching and porting through GitHub, rather than routinely handing the owner scripts or manual edits. The owner directs priorities and approves scope; the owner handles physical hardware and local testing as needed. This supersedes the older README wording that the owner edits all files himself.
 
 GitHub access to all three repositories was verified with read, write and admin permissions during this session. Recheck availability in a new chat. Access is not permission to make unrelated changes, deploy firmware or modify donor repositories without instruction.
