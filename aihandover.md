@@ -2,7 +2,7 @@
 
 Last updated: 2026-11-26  
 Status: V1.04 fresh coordinator foundation implemented with owner approval; native core tests passed, Arduino compile and hardware runtime pending. V1.03 last owner-verified compile. See [runtime-framework.md](runtime-framework.md).  
-Read this file first when starting a new Moto-Mate chat, then inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
+Read this file first when starting a new Moto-Mate chat, then read [operating-design.md](operating-design.md) (latest owner decisions, architecture, maintenance workflow, priorities, GUI/OSA audit and predictive diagnostics), inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
 ## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
 
@@ -21,7 +21,7 @@ Engineering implications (implementation subject to owner direction and evidence
 
 **Latest precedence — 2026-11-26.** Owner direction (2026-11-26): this is the opportunity to remove accumulated firmware technical debt. Bike-Mate is the functional reference, not a line-count or implementation constraint. The previous approximately 95% reuse target is no longer a firmware acceptance criterion. Reuse clean, proven implementations; replace unnecessarily complicated, blocking, duplicated or obsolete implementations where justified by the audit and verified against the required behaviour. Do not copy bad code merely to preserve reuse. Preserve functional and host/data compatibility, battery-first policy, core 2.0.17, and the explicitly protected BLE/Wi-Fi implementation and proven recovery sequence. Protected changes still require separate owner approval. GUI remains essentially a straight copy. This is not permission to discard live features, rewrite proven code for style, or modify the donor/OSA without scope approval.
 
-The earlier direct-port directions below are historical context, subordinate to this clarification.
+The owner subsequently explicitly approved fresh setup/loop first, adding working donor implementations only as needed. See operating-design.md; the earlier direct-port directions below are historical context, subordinate to this clarification.
 
 Moto-Mate MkII is Bike-Mate running on a different ESP32 with new peripheral modules. The owner's target is to reuse approximately 95% of both existing ESP32 firmware and GUI code. This is a target, not a measured percentage.
 
@@ -62,7 +62,7 @@ These are the reviewed revisions, not permanent pins or claims about the current
 
 | Role | Repository | Reviewed baseline |
 | --- | --- | --- |
-| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, b2d36d88605a7b6ffeae97e979727b6713cb3b35, 2026-11-26, firmware V1.03 (latest code commit; docs may be newer) |
+| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, 36bbb253622e65b85f1ad68cf309220756c684b9, 2026-11-26, firmware V1.04 (latest code commit; docs may be newer) |
 | Software donor | [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate) | main, bc5766c319da25622db1f2c86b58339afd07d5ad, 2026-11-03, firmware V6.49 |
 | Integration server | [OSA-Server](https://github.com/bigbadevilaussie-hue/OSA-Server) | main, 434b65d6bf74734f8b4b13224472c53ad78f042e, 2026-10-30, V1.33 |
 
@@ -72,13 +72,14 @@ Bike-Mate V6.49 includes the two-second engine-stop debounce. Recent donor histo
 
 **BleManager.cpp / BleManager.h are protected.** The owner spent weeks getting BLE working. Do not refactor, optimise, rewrite, switch libraries, or alter timing, callbacks, UUIDs, packet framing, handshake, ACK handling, retry behaviour or file transfer semantics for cosmetic reasons. If a change is demonstrably required by the S3 or agreed functionality, identify evidence and discuss it with the owner before touching protected code. Preserve OSA and GUI compatibility end to end.
 
-**Arduino ESP32 core 2.0.17 ONLY.** The owner explicitly locked this because of macOS toolchain and NimBLE/BLE compatibility problems. Do not upgrade to 3.x or migrate BLE stacks; the Moto-Mate sketch currently includes the Arduino BLEDevice/BLEServer/BLEUtils/BLE2902 headers. The reference to NimBLE describes past compatibility trouble, not a request to switch libraries.
+**Arduino ESP32 core 2.0.17 ONLY.** The owner explicitly locked this because of macOS toolchain and NimBLE/BLE compatibility problems. Do not upgrade to 3.x or migrate BLE stacks; the V1.03 sketch included Arduino BLEDevice/BLEServer/BLEUtils/BLE2902 headers; V1.04 removed unused includes pending real subsystem integration. The reference to NimBLE describes past compatibility trouble, not a request to switch libraries.
 
 **Wi-Fi/BLE coexistence is protected.** Never run both at once. Stop BLE, wait 500 ms, then start Wi-Fi as documented. The Bike-Mate WifiManager.cpp IDF teardown/reinitialisation sequence is documented as proven 72/72 on Opal. Preserve it and existing retry behaviour. Keep documented 8.5 dBm TX power baseline; validate on the new board rather than guessing.
 
 ## 5. Current development state (owner-confirmed)
 
-- Latest V1.03 b2d36d8 owner pulled and compiled successfully: 386841 B flash, 20528 B static RAM, 307152 B remaining. Seven-mode splash renderer, automatic firmware version and synthetic battery readings; corrected RGB565 pixel check. Final artwork, actual runtime and TFT pending. See [port-plan.md](port-plan.md) for ordered candidates and bench gates, including main-loop audit, button, clock, OTA and BLE priorities. V1.02 history below is retained.
+- V1.04 36bbb25 is the current firmware; fresh bench-only coordinator and native test source. Owner Arduino compile and physical runtime still pending. No protected changes. See runtime-framework.md.
+- Last owner-compiled V1.03 b2d36d8:  386841 B flash, 20528 B static RAM, 307152 B remaining. Seven-mode splash renderer, automatic firmware version and synthetic battery readings; corrected RGB565 pixel check. Final artwork, actual runtime and TFT pending. See [port-plan.md](port-plan.md) for ordered candidates and bench gates, including main-loop audit, button, clock, OTA and BLE priorities. V1.02 history below is retained.
 
 - V1.00 historical include-only baseline passed. V1.01 added LovyanGFX; V1.02 is the temporary off-screen display smoke test at 29808f4. Owner installed LovyanGFX 1.2.36, pulled V1.02 and pasted a successful compile/link on Arduino ESP32 core 2.0.17. Adafruit display includes remain.
 - Exact verified build command:
@@ -127,7 +128,7 @@ Known documentation inconsistencies to resolve against actual wiring and owner c
 
 Bike-Mate's bike_mate.ino owns the state machine, RTC, wake/sleep and setup/loop. Its modular firmware includes BleManager, DisplayManager, Sensors, GpsModule, Buzzer, RideLogger, RideStorage, WakeLogger, Settings, WifiManager, WebServer, OtaManager, DriveUpload, WifiMail and SerialBuffer. The C3-to-S3, OLED-to-TFT, NTC-to-SHT40, MPU and GPIO/power adaptations are the areas to inspect, not a license for sweeping changes. Keep the original protocol and file formats unless explicitly agreed otherwise.
 
-The GUI is a Python/Tk application launched by bikemate.py with the package bikemate/ (app.py, ble.py, config.py, drive.py, ota.py, reports.py, ride_picker.py, ride_finder.py, dynatune_window.py, serial_window.py, state.py, weather.py, widgets.py and helpers.py). Preserve the existing GUI layout and functionality: ACC/engine/warn status, connection status, large voltage reading, temperature/storage/time, voltage and temperature graphs, settings, reports, maintenance, OTA. Branding and new telemetry changes only as requested. GUI helper modules were located but not reviewed in depth.
+The GUI is a Python/Tk application launched by bikemate.py with the package bikemate/ (app.py, ble.py, config.py, drive.py, ota.py, reports.py, ride_picker.py, ride_finder.py, dynatune_window.py, serial_window.py, state.py, weather.py, widgets.py and helpers.py). Preserve the existing GUI layout and functionality: ACC/engine/warn status, connection status, large voltage reading, temperature/storage/time, voltage and temperature graphs, settings, reports, maintenance, OTA. Branding and new telemetry changes only as requested. All 14 first-party GUI package modules, launcher and packaging script have now been reviewed at GUI V4.54, with relevant OSA paths. Findings and candidate changes are in operating-design.md; no GUI/OSA code changes or runtime tests.
 
 ## 8. OSA Server is required, same pattern as Bike-Mate
 
@@ -145,7 +146,7 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 
 ## 9. New chat startup
 
-1. Read this handover from Moto-Mate main.
+1. Read this handover and operating-design.md from Moto-Mate main; review README rules and the port plan.
 2. Confirm current Moto-Mate, Bike-Mate and OSA revisions and inspect relevant source files.
 3. Follow the direct-port rule, protected BLE/Wi-Fi code and core 2.0.17 lock.
 4. Take the technical lead on requested patches/porting. Ask only for missing material hardware or test facts, and do not make speculative changes.

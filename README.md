@@ -16,13 +16,15 @@ Protect the battery first. Collect all useful data needed to diagnose the batter
 
 Owner direction (2026-11-26): this is the opportunity to remove accumulated firmware technical debt. Bike-Mate is the functional reference, not a line-count or implementation constraint. The previous approximately 95% reuse target is no longer a firmware acceptance criterion. Reuse clean, proven implementations; replace unnecessarily complicated, blocking, duplicated or obsolete implementations where justified by the audit and verified against the required behaviour. Do not copy bad code merely to preserve reuse. Preserve functional and host/data compatibility, battery-first policy, core 2.0.17, and the explicitly protected BLE/Wi-Fi implementation and proven recovery sequence. Protected changes still require separate owner approval. GUI remains essentially a straight copy. This is not permission to discard live features, rewrite proven code for style, or modify the donor/OSA without scope approval.
 
-Moto-Mate is the successor to [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate), which was built, installed on the bike and worked. Moto-Mate changes the hardware, not the proven software architecture.
+Moto-Mate is the successor to [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate), which was built, installed on the bike and worked. Moto-Mate changes the hardware and rebuilds the coordinator while retaining proven functionality and communication contracts.
 
 The historical reuse target was approximately 95%; firmware quality and functional compatibility now take precedence over source reuse. The GUI is essentially a straight copy of Bike-Mate's Python/Tk application. Adapt GPIOs, display, sensors, power management and other genuinely hardware-dependent behaviour as required. Preserve existing protocols, file formats, functionality and proven workarounds. Clean and optimise the ESP32 code as it comes over: remove verified dead code, consolidate duplicates and fix evidenced faults using [TODO.md](TODO.md). No gratuitous refactoring or unauthorised changes to protected BLE/Wi-Fi code.
 
 The reviewed donor is Bike-Mate firmware V6.49 (commit [bc5766c](https://github.com/bigbadevilaussie-hue/Bike-Mate/commit/bc5766c319da25622db1f2c86b58339afd07d5ad)); GUI v4.52 is the supplied visual reference. Check current Git HEAD before porting.
 
 ## System architecture
+
+**Current design authority:** [operating-design.md](operating-design.md) records the owner-approved fresh coordinator, wake-first decision process, work priorities, maintenance session workflow, GUI/OSA responsibilities, predictive diagnostics and remaining decisions. Read it before porting. Older conflicting descriptions are historical.
 
 Moto-Mate has three components:
 
@@ -214,6 +216,7 @@ The original owner rules below are retained verbatim. Apply the following later 
 | [aihandover.md](aihandover.md) | Current project direction, repository references, technical lead responsibilities and new-chat handover |
 | [TODO.md](TODO.md) | Full ESP32 audit and prioritised porting backlog |
 | [port-plan.md](port-plan.md) | Dependency-ordered implementation candidates and acceptance gates |
+| [operating-design.md](operating-design.md) | Current operating requirements, decision record, GUI/OSA findings and predictive diagnostics |
 | [Config.h](Config.h) | GPIO assignments and firmware version |
 | [motomate.ino](motomate.ino) | Fresh V1.04 setup/loop coordinator |
 | [runtime-framework.md](runtime-framework.md) | Coordinator contract, bench tests and integration rules |

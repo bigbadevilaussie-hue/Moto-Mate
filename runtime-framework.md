@@ -42,4 +42,6 @@ If diagnostics fail, expect FAULT instead; the state machine must not report suc
 
 ## Integration contract
 
+[operating-design.md](operating-design.md) is the latest decision record for the planned coordinator, priority work, protection, session management and host responsibilities. V1.04 remains the smaller bench-only implementation described above; do not infer these planned states are implemented.
+
 Add real services one subsystem at a time, not placeholder functions. Each service has explicit ownership, cadence, bounded duration or safe transaction boundary, failure handling and a measured timing budget. Loop must remain responsive to button and power policy. State transitions only through coordinator; add domain states and explicit sleep inhibitors when real ride/maintenance/OTA/logging work arrives. Keep elapsed scheduling independent of wall clock. No catch-up bursts, arbitrary waits, duplicated flags or fake readings. Do not assume every protected call can become nonblocking without evidence. No ticket closed solely by native tests or compile success. Next candidate is power/wake and button, followed by clock/settings.
