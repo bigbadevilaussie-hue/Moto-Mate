@@ -1,7 +1,7 @@
 # Moto-Mate — AI Handover
 
-Last updated: 2026-11-25  
-Status: V1.02 pre-port display smoke test; compile/link passed, runtime pending.  
+Last updated: 2026-11-26  
+Status: V1.03 splash framework; owner compile/link passed, runtime pending. Dependency-ordered [port plan](port-plan.md) documented; no additional firmware port started.  
 Read this file first when starting a new Moto-Mate chat, then inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
 ## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
@@ -58,7 +58,7 @@ These are the reviewed revisions, not permanent pins or claims about the current
 
 | Role | Repository | Reviewed baseline |
 | --- | --- | --- |
-| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, 29808f474c3a8f89cff91e7fac68e57d191e0534, 2026-11-25, firmware V1.02 (latest code commit; docs may be newer) |
+| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, b2d36d88605a7b6ffeae97e979727b6713cb3b35, 2026-11-26, firmware V1.03 (latest code commit; docs may be newer) |
 | Software donor | [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate) | main, bc5766c319da25622db1f2c86b58339afd07d5ad, 2026-11-03, firmware V6.49 |
 | Integration server | [OSA-Server](https://github.com/bigbadevilaussie-hue/OSA-Server) | main, 434b65d6bf74734f8b4b13224472c53ad78f042e, 2026-10-30, V1.33 |
 
@@ -73,6 +73,8 @@ Bike-Mate V6.49 includes the two-second engine-stop debounce. Recent donor histo
 **Wi-Fi/BLE coexistence is protected.** Never run both at once. Stop BLE, wait 500 ms, then start Wi-Fi as documented. The Bike-Mate WifiManager.cpp IDF teardown/reinitialisation sequence is documented as proven 72/72 on Opal. Preserve it and existing retry behaviour. Keep documented 8.5 dBm TX power baseline; validate on the new board rather than guessing.
 
 ## 5. Current development state (owner-confirmed)
+
+- Latest V1.03 b2d36d8 owner pulled and compiled successfully: 386841 B flash, 20528 B static RAM, 307152 B remaining. Seven-mode splash renderer, automatic firmware version and synthetic battery readings; corrected RGB565 pixel check. Final artwork, actual runtime and TFT pending. See [port-plan.md](port-plan.md) for ordered candidates and bench gates, including main-loop audit, button, clock, OTA and BLE priorities. V1.02 history below is retained.
 
 - V1.00 historical include-only baseline passed. V1.01 added LovyanGFX; V1.02 is the temporary off-screen display smoke test at 29808f4. Owner installed LovyanGFX 1.2.36, pulled V1.02 and pasted a successful compile/link on Arduino ESP32 core 2.0.17. Adafruit display includes remain.
 - Exact verified build command:
@@ -145,4 +147,4 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 4. Take the technical lead on requested patches/porting. Ask only for missing material hardware or test facts, and do not make speculative changes.
 5. Report actual results and update this document when project decisions change.
 
-Current next action: owner selects the next task. V1.02 compile/link passed; execute the off-screen smoke test when an ESP32 is available, then validate the actual TFT when instructed. Static donor audit complete; donor firmware/GUI/OSA port not started. No fabrication or final hardware selection implied.
+Current next action: review [port-plan.md](port-plan.md); owner selects the first implementation task (recommended coordinator/main-loop inventory and foundation). V1.03 compile/link passed, runtime pending. Static donor audit complete; donor firmware/GUI/OSA port not started. No fabrication or final hardware selection implied.

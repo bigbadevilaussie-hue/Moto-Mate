@@ -1,0 +1,54 @@
+# Moto-Mate — dependency-ordered port plan
+
+2026-11-26. Planning only; no firmware port authorised by this document alone.
+Donor Bike-Mate V6.49 bc5766c319da25622db1f2c86b58339afd07d5ad. Destination V1.03 b2d36d88605a7b6ffeae97e979727b6713cb3b35. Source of findings: [TODO.md](TODO.md), 32 tracked donor source files, 47 open tickets (13 P0, 17 P1, 14 P2, 3 P3). Every ticket mapped below; mapping is not closure.
+
+## Owner priorities and constraints
+
+SAVE THE BATTERY AT ALL COSTS. Clean, optimised direct port; preserve proven behaviour and protocols. Core 2.0.17 ONLY, LovyanGFX 1.2.36. BLE and Wi-Fi protected: no unapproved edits. Owner performs local compile, physical tests; technical lead performs requested GitHub patches. Main loop, time drift, responsive button, rock-solid OTA and efficient BLE logging are early acceptance priorities.
+
+Phase 1: breadboard ESP32 + TFT on USB-C to iMac, sensors as required and bench PSU to simulate bike voltage through reviewed ADC divider. BENCH mode. Owner target approximately 90% of code testing before locking circuit; not measured coverage. USB-powered bench cannot prove total 12 V battery input current or crank brownout immunity. Phase 2: lock circuit only after owner approval, then owner builds stripboard and tests production power/hardware. On-bike validation is a proposed later gate, not an authorised installation. Hardware/RTC/power design remains open.
+
+## Implementation candidates and order
+
+| Stage | Candidate | Scope and verification | Audit IDs (MM-) |
+| --- | --- | --- | --- |
+| 0 | Display baseline — Splash.cpp/h, Config.h, motomate.ino | Owner compile/link V1.03 passed; runtime/artwork pending. | 041 |
+| 1 | Coordinator foundation — motomate.ino; trace and scheduling interfaces | Map donor transitions, blocking calls, ownership and deadlines. Instrument max loop gap and each service; prove idle-from-boot watchdog. No wholesale state machine replacement. | 007,008,042 |
+| 2 | Power / sleep — Config.h; S3 power/wake service | Safe rail/BLK/buzzer/GPS states, GPIO13 wake, timer wake, holds, measured current and wake energy. Keep physical power separate from logical ACC. | 009,013 |
+| 3 | Button — Early wake-cause capture and single button event owner | Test release, bounce, held button, rapid clicks, startup latency and return to sleep. Double-click battery check; single-click rider ready and long-press maintenance are proposed; agree timing. Existing 10k pull-up; optional capacitor only if evidence. | 043 |
+| 4 | Clock — Platform time, NVS epoch restore/save, sync boundary | Remove dead tick counter; separate monotonic elapsed time from wall time. Simulate forward/backward corrections, invalid epoch, reboot; measure RTC drift across sleep against OSA. External RTC candidate not selected. | 014,015,031 |
+| 5 | Settings — Settings.cpp/h, Config.h | Keep schema and keys; reject malformed/nonfinite/out-of-range values, validate NVS, prove persistence, explicit BENCH vs FIELD policy. | 023,036,037 |
+| 6 | Diagnostics — SerialBuffer.cpp/h, tprint | Bound memory, concurrent logging and serial endpoint compatibility; timing traces without continuous noisy logs. | 040 |
+| 7 | Sensors — Sensors.cpp/h | S3 ADC calibration and validity, SHT40 and MPU; separate fast voltage from slower samples; bench PSU reference, divider measurement point, crank capture limits. No fake startup values. | 018,030,039 |
+| 8 | Buzzer — Existing Moto-Mate Buzzer.cpp/h | Retain donor cues, remove dead sequencing; bound blocking, test timing and pin off. | 032 |
+| 9 | Display lifecycle — DisplayManager.cpp/h, Splash.cpp/h | Seven splash modes, dynamic version/status, battery check voltage/temp. Lock approved artwork separately; TFT rotation, colour, backlight and dirty redraw; no parked timer-wake splash. | 041 |
+| 10 | Wake logs / shared storage — WakeLogger.cpp/h; transactional storage utility | No automatic format or destructive boot sweep; recover sealed data, checked gzip/temp/rename, collision-safe naming, row validity and checked writes. Fault-injection tests. | 001,002,003,016,017,021,033,038 |
+| 11 | BLE / OSA — BleManager.cpp/h; OSA compatibility | Read and agree required S3 interface adaptations; copy protected behaviour, test framing, telemetry, clock, settings, ACK and backlog on real OSA. Reproduce protected findings before approved fixes. Verify identity decision. | 005,006,025,026,027,044 |
+| 12 | Wi-Fi — WifiManager.cpp/h | Preserve proven 8.5 dBm, IDF recovery and existing waits (>=500ms separation, donor 800ms after bleStop). Repeated BLE/Wi-Fi handover on S3; no concurrent radios. | 008,015,026,027 |
+| 13 | HTTP / OTA — WebServer.cpp/h, OtaManager.cpp/h | Early vertical slice with actual OSA/GUI-compatible upload; explicit success/abort, valid image and boot confirmation; recover interruptions, retry and failure. Decide live legacy URL path after caller review. | 012,028 |
+| 14 | Maintenance — Coordinator + WebServer lifecycle | Replace nested scheduler ownership incrementally. Proposed on-demand maintenance, settings via existing BLE where supported, optional local button entry; bounded sessions, engine-start handling, cleanup and post-OTA confirmation. Agree UX first. | 008,009,029,042 |
+| 15 | GPS — GpsModule.cpp/h | UART1 correct pins, valid/fresh fix, stale state and power/backfeed checks. Remove dead epoch stub. | 019,035 |
+| 16 | Ride logs — RideStorage.cpp/h, RideLogger.cpp/h | Keep formats and summary struct; recovery if time/file invalid, correct durations, state and location, safe close/flush and shared compression. | 010,019,020,021,034,038 |
+| 17 | Upload — DriveUpload.cpp/h, scheduler | Due vs attempted vs ACK-complete, bounded retry and backlog; preserve automatic and manual delivery; prove no loss, duplicate acceptance or needless wake. Protected BLE fixes only by approval. | 004,005,006,008,038,039 |
+| 18 | Alerts — WifiMail.cpp/h, alert policy | Decide OSA delivery vs retained SMTP fallback; test low voltage, failure and backoff, never silently drop alerts. | 022,024 |
+| 19 | State integration — motomate.ino + all services | Trace donor behaviour and approved changes: sustained start qualification, 2s stop debounce, arming, cooldown, ride logging, no-charge fault limitation, safe outputs and power budget. | 007,009,010,011,017,018,020,022,042,047 |
+| 20 | GUI / host — Bike-Mate GUI and OSA integration | Preserve GUI and wire contracts, agreed identity/routing, real settings and OTA workflow. Host compatibility fixtures required earlier than this full GUI port. | 027,028,029,044 |
+| 21 | Regression / cleanup — All affected modules | Re-run all tests, verify resource and battery budgets, remove verified dead paths during relevant patches; retain live retries, protected code and audit history. | 036,037,039,045,046,047 |
+
+## Dependency and build discipline
+
+This is a logical order, not a promise that each donor .cpp can link independently. Before each patch, inspect pinned and current donor headers, extern globals, callback registration and real callers; map destination equivalents and compile/link dependencies. In particular BLE refers to ride storage, settings, time, GPS, logging and OTA state; WebServer references upload, storage, Wi-Fi, settings and display. Bring forward minimum real prerequisite implementation in a reviewed compile group if necessary, or defer that integration gate. No fake-success stubs or blind bulk copy. Early OTA and BLE gates take priority over finishing cosmetic screens/GPS/GUI; full ride/upload functionality follows. Preserve original data layouts/UUIDs/keys; test with host fixtures and actual OSA early. Do not equate compile success with behaviour.
+
+Main loop work: record setup/wake/loop/sleep transition truth table before changing semantics. Inventory every delay, while loop, retry, blocking API and callback across modules; owner of each flag/output, max service duration, clock basis, watchdog exemption, failure/cancel path. Existing 50ms loop delay, 3s splash, held-button wait, 5min maintenance loop and synchronous radio/storage work are audit targets, not automatic removals. Separate wall epoch from monotonic deadlines; do not carry millis deadlines across reboot. Track maximum service/loop gap, button latency, sensor cadence, wake duration, heap low-water and energy. Use bounded cooperative service calls where practical; preserve necessary proven waits and safe OTA/storage transaction boundaries. Never sleep during an unsafe flash or file transaction.
+
+## Acceptance gates
+
+- G0 — owner V1.03 compile/link PASS: 386841 / 1966080 B flash, 20528 / 327680 B static RAM, 307152 B remaining per CLI. Runtime 40 KiB sprite extra. No MCU runtime or physical TFT pass. Exact artwork pending.
+- G1 — foundation: correct wake cause, button handling, clock corrections/drift, settings validation, safe rails and bounded idle work. Bench latency and energy measured, limits agreed before declaring pass.
+- G2 — storage and telemetry: reset during writes/compression, mount failure, full disk, lost ACK/disconnect; preserve every recoverable row and deliver to real OSA. Test backlog sizes 1/7/8/20 from audit. No protected change without approval.
+- G3 — OTA and maintenance: successful update and actual boot version, invalid/truncated/aborted image, repeated update, Wi-Fi failure, return to normal BLE/deep sleep; no false success or indefinite awake. Settings read/change via BLE where verified, Wi-Fi for actual OTA/console, local wake option. Queueing and long press maintenance remain proposals.
+- G4 — complete breadboard integration: simulated start/stop/crank and charging faults, valid sensor data, button, display, logs, GPS as available, settings, GUI/OSA and recovery. Compare donor contracts; inventory remaining untested hardware-specific behaviour. Owner approves circuit separately.
+- G5 — production stripboard: measure complete 12 V input sleep current target <=1 mA and representative awake energy; rail holds/backfeed, crank dropouts including owner-reported 6 V sag as test scenario (not a measured trace here), physical TFT/backlight, sensors, wake and OTA. No claim of achieved target until measured. Review on-bike validation only after approval.
+
+Every firmware patch: scoped change, version bump, owner compile, specific expected runtime evidence. Mark tickets done only with evidence; preserve all 47 until individually resolved. Documentation-only updates do not bump version. No automatic dependency upgrade or permission to modify donor/OSA/protected modules.

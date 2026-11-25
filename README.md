@@ -81,6 +81,9 @@ Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-r
 
 ## Build status
 
+**Latest baseline: V1.03 — owner compile/link PASS (2026-11-26).** Commit [b2d36d8](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/b2d36d88605a7b6ffeae97e979727b6713cb3b35): 386841 B flash, 20528 B static RAM, 307152 B remaining. Splash framework with seven modes and dynamic version; off-screen test only, final artwork and runtime pending. See [assets/display/README.md](assets/display/README.md). The V1.02 baseline below is retained for comparison.
+
+
 **V1.02 — pre-port display smoke test; compile and link PASS (2026-11-25).**
 
 - Firmware commit [29808f4](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/29808f474c3a8f89cff91e7fac68e57d191e0534); owner confirmed local fast-forward and successful Arduino CLI compile. V1.01 added LovyanGFX includes ([8648189](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/8648189717608e39f3aaeda9fc4b60f023bd6132)); V1.02 exercises actual display and sprite APIs.
@@ -204,8 +207,9 @@ The original owner rules below are retained verbatim. Apply the following later 
 | --- | --- |
 | [aihandover.md](aihandover.md) | Current project direction, repository references, technical lead responsibilities and new-chat handover |
 | [TODO.md](TODO.md) | Full ESP32 audit and prioritised porting backlog |
+| [port-plan.md](port-plan.md) | Dependency-ordered implementation candidates and acceptance gates |
 | [Config.h](Config.h) | GPIO assignments and firmware version |
-| [motomate.ino](motomate.ino) | Temporary V1.02 display smoke test |
+| [motomate.ino](motomate.ino) | Temporary V1.03 display and splash smoke test |
 | [hardware-inventory.md](hardware-inventory.md) | Ordered components, physical board size, enclosure/TFT fit and open hardware checks |
 | [moto14wires30cuts.json](moto14wires30cuts.json) | Latest committed schematic and stripboard layout |
 | [veroboard.md](veroboard.md) | Wiring guide and BOM (requires reconciliation) |
