@@ -57,6 +57,8 @@ The optional external 32.768 kHz RTC crystal and two 15 pF capacitors remain in 
 
 Open hardware review items: AGM connector footprint placement, input diode current rating relative to fuse and USB load, transient protection and bulk capacitor voltage margin, TFT BLK current, GPS back-powering, C2 ADC capacitor (100 nF in JSON vs 1 uF in older requirements), and measured sleep/wake current. Confirm actual wiring and component ratings before fabrication or power-up.
 
+Ordered components, physical stripboard confirmation, TFT and enclosure details, and unresolved component/fit checks are recorded in [hardware-inventory.md](hardware-inventory.md). This inventory is not a final BOM.
+
 ### GPIO map
 
 Source: [Config.h](Config.h). ESP-side signal names.
@@ -79,13 +81,43 @@ Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-r
 
 ## Build status
 
-**V1.00 — pre-port baseline.**
+**V1.02 — pre-port display smoke test; compile and link PASS (2026-11-25).**
 
-- Owner confirms test compile of all required library includes on Arduino ESP32 Core 2.0.17 passed. Original README reported approximately 300 KB flash (15%) and 19.2 KB RAM (5%).
-- motomate.ino currently contains library includes and empty setup()/loop(). Config.h and an active buzzer driver exist.
-- Veroboard design, custom component definitions and V4 enclosure exist.
-- Firmware and GUI port not started. OSA integration not implemented for Moto-Mate.
-- Runtime hardware tests, measured battery draw and complete firmware compile have not been established.
+- Firmware commit [29808f4](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/29808f474c3a8f89cff91e7fac68e57d191e0534); owner confirmed local fast-forward and successful Arduino CLI compile. V1.01 added LovyanGFX includes ([8648189](https://github.com/bigbadevilaussie-hue/Moto-Mate/commit/8648189717608e39f3aaeda9fc4b60f023bd6132)); V1.02 exercises actual display and sprite APIs.
+- Arduino ESP32 core **2.0.17 ONLY**; LovyanGFX **1.2.36** installed and compile-verified. Preserve this known build combination; no unsolicited upgrades. Adafruit_GFX / Adafruit_ST7735 remain included for now.
+- Board: ESP32S3 Dev Module, FQBN esp32:esp32:esp32s3. The owner provided board details confirming all compile options below. 4 MB flash, disabled PSRAM and min_spiffs are provisional smoke-test settings, not confirmed physical memory specifications or final storage partition. min_spiffs supports OTA but has only about 190 KB filesystem space; revisit against logging requirements and actual flash capacity.
+- Original V1.00 include-only test passed at approximately 300 KB flash / 19.2 KB RAM; retain as historical baseline, not a controlled library-size benchmark.
+
+Reproduce on the owner's iMac (install exact library version only if needed):
+
+```bash
+cd ~/Documents/Arduino/motomate && arduino-cli lib install LovyanGFX@1.2.36
+cd ~/Documents/Arduino/motomate && arduino-cli compile --fqbn esp32:esp32:esp32s3:PartitionScheme=min_spiffs,CDCOnBoot=cdc,FlashSize=4M,PSRAM=disabled .
+```
+
+Actual owner compile output:
+
+```text
+Sketch uses 383889 bytes (19%) of program storage space. Maximum is 1966080 bytes.
+Global variables use 20528 bytes (6%) of dynamic memory, leaving 307152 bytes for local variables. Maximum is 327680 bytes.
+```
+
+The 160 x 128 RGB565 sprite needs 40,960 bytes (40 KiB) of pixel storage plus overhead at runtime; this is not included in static RAM. Available contiguous heap and full firmware memory use remain unmeasured.
+
+### Display direction and smoke test
+
+The owner wants high-quality colour motorcycle instrumentation, not an OLED-style monochrome port. LovyanGFX is the preferred candidate for the TFT implementation following the successful build; final runtime acceptance remains pending. Suggested graphics include readable digital speed and charging voltage, colour-coded battery gauges/warnings, countdown and OTA progress, and a future artificial horizon/lean-angle view using the MPU6050. These are design ideas, not implemented or approved final screens. Dynamic lean estimation requires calibration and sensor fusion; accelerometer gravity alone is not a reliable motorcycle lean-angle measurement during cornering. Keep riding graphics subordinate to battery preservation; avoid unnecessary parked backlight/display activity.
+
+V1.02 configures lgfx::Panel_ST7735S and Bus_SPI (SPI2_HOST, mode 0, provisional 16 MHz, write-only, no MISO; GPIOs from Config.h). The panel is 128 x 160 portrait; the RAM sprite is 160 x 128 landscape. No physical TFT init, rotation, sprite transfer or backlight control is performed. The temporary sketch draws a synthetic horizon, circle, text and dummy 14.2 V value, checks allocation, dimensions and two known pixels, frees the sprite, then prints PASS/FAIL. It does not test live voltage, MPU, GPS, SPI traffic or physical display. The temporary serial boot delay and idle loop are not production power management.
+
+When an ESP32 is available, run the test even with no TFT attached. Expected output at 115200 baud (not yet observed):
+
+```text
+[BOOT] MOTO-MATE V1.02
+[TFT] PASS: 160x128 RGB565 sprite and pixel readback
+```
+
+Next hardware test: validate panel offsets, colour order, inversion, rotation, actual SPI rate and backlight current; then test physical display and sleep/backlight shutdown. Full firmware/GUI port and OSA integration remain unstarted. No Moto-Mate runtime, physical current, wiring or fabrication validation has been reported. The 47 donor-audit tickets remain open; smoke-test code is not the production DisplayManager.
 
 ## Non-negotiable engineering rules
 
@@ -173,7 +205,8 @@ The original owner rules below are retained verbatim. Apply the following later 
 | [aihandover.md](aihandover.md) | Current project direction, repository references, technical lead responsibilities and new-chat handover |
 | [TODO.md](TODO.md) | Full ESP32 audit and prioritised porting backlog |
 | [Config.h](Config.h) | GPIO assignments and firmware version |
-| [motomate.ino](motomate.ino) | Current firmware skeleton |
+| [motomate.ino](motomate.ino) | Temporary V1.02 display smoke test |
+| [hardware-inventory.md](hardware-inventory.md) | Ordered components, physical board size, enclosure/TFT fit and open hardware checks |
 | [moto14wires30cuts.json](moto14wires30cuts.json) | Latest committed schematic and stripboard layout |
 | [veroboard.md](veroboard.md) | Wiring guide and BOM (requires reconciliation) |
 | [project.md](project.md) | Hardware and operational specification (older software direction superseded) |

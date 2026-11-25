@@ -1,7 +1,7 @@
 # Moto-Mate — AI Handover
 
 Last updated: 2026-11-25  
-Status: pre-port baseline; documentation only.  
+Status: V1.02 pre-port display smoke test; compile/link passed, runtime pending.  
 Read this file first when starting a new Moto-Mate chat, then inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
 ## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
@@ -58,7 +58,7 @@ These are the reviewed revisions, not permanent pins or claims about the current
 
 | Role | Repository | Reviewed baseline |
 | --- | --- | --- |
-| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, e6828935eb18d9df960fab3260684791eba1315a, 2026-11-19, firmware V1.00 |
+| Destination | [Moto-Mate](https://github.com/bigbadevilaussie-hue/Moto-Mate) | main, 29808f474c3a8f89cff91e7fac68e57d191e0534, 2026-11-25, firmware V1.02 (latest code commit; docs may be newer) |
 | Software donor | [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate) | main, bc5766c319da25622db1f2c86b58339afd07d5ad, 2026-11-03, firmware V6.49 |
 | Integration server | [OSA-Server](https://github.com/bigbadevilaussie-hue/OSA-Server) | main, 434b65d6bf74734f8b4b13224472c53ad78f042e, 2026-10-30, V1.33 |
 
@@ -74,11 +74,18 @@ Bike-Mate V6.49 includes the two-second engine-stop debounce. Recent donor histo
 
 ## 5. Current development state (owner-confirmed)
 
-- A test compile with all required peripheral/library includes has already passed under core 2.0.17. This is library/toolchain compatibility evidence, not proof of runtime or electrical operation.
-- No firmware port or GUI port has been started. No other development beyond the existing baseline has been reported by the owner.
-- Moto-Mate motomate.ino is a minimal include-only skeleton with empty setup() and loop() at the reviewed revision. Config.h defines the GPIO map and V1.00. Buzzer.cpp/h contain an existing active-buzzer baseline.
-- Veroboard hardware design, wiring guide, custom part JSONs and V4 OpenSCAD enclosure exist. Physical assembly/test status has not been confirmed.
-- The AI explored repositories read-only before this documentation task. No code copied, changed, compiled, flashed or tested by the AI.
+- V1.00 historical include-only baseline passed. V1.01 added LovyanGFX; V1.02 is the temporary off-screen display smoke test at 29808f4. Owner installed LovyanGFX 1.2.36, pulled V1.02 and pasted a successful compile/link on Arduino ESP32 core 2.0.17. Adafruit display includes remain.
+- Exact verified build command:
+
+```bash
+cd ~/Documents/Arduino/motomate && arduino-cli compile --fqbn esp32:esp32:esp32s3:PartitionScheme=min_spiffs,CDCOnBoot=cdc,FlashSize=4M,PSRAM=disabled .
+```
+
+- Flash: 383889 / 1966080 bytes (CLI 19%). Static RAM: 20528 / 327680 bytes (CLI 6%), 307152 bytes remaining per compiler. A 40 KiB dynamic sprite plus overhead is additional. These are temporary test binary figures, not full firmware or runtime heap measurements. The chosen 4 MB/no PSRAM/min_spiffs options are provisional, with physical capacity and final OTA/filesystem budget unconfirmed. Do not upgrade the core. See README Build status for the exact install command and test scope.
+- The test configures ST7735S write-only SPI2, mode 0, 16 MHz provisional, uses Config.h GPIOs and renders a 160 x 128 RGB565 sprite in RAM with synthetic horizon and text. No display/backlight init or transfer. Expected [BOOT] MOTO-MATE V1.02 and [TFT] PASS: 160x128 RGB565 sprite and pixel readback at 115200 baud; not yet observed. No board connected during compile; runtime and physical TFT untested.
+- Owner wants impressive colour graphics; LovyanGFX is the preferred candidate after the successful compile. Future lean/horizon ideas require sensor fusion and validation; not approved final functionality. Preserve battery-first policy and readable instruments.
+- No donor firmware or GUI port, OSA integration or physical Moto-Mate tests have been reported. Buzzer.cpp/h remain baseline. Temporary smoke-test loop is not production power management.
+- Veroboard design, custom part JSONs and V4 OpenSCAD enclosure exist. Owner confirmed actual stripboard is 24 x 56 holes. Ordered hardware, case parameters and fit checks are tracked in [hardware-inventory.md](hardware-inventory.md); final hardware and BOM remain preliminary.
 - Bike-Mate GUI screenshot supplied in chat shows GUI v4.52, disconnected / NO SIGNAL. It is the visual reference, not a hardware test result. No screenshot binary is stored by this handover.
 
 ## 6. New hardware: use Moto-Mate files, not donor pin definitions
@@ -108,7 +115,7 @@ Known documentation inconsistencies to resolve against actual wiring and owner c
 - TFT direct-drive BLK versus outdated IRLZ44N statements in parts/sensor wiring sections.
 - Rail, diode and I2C pull-up descriptions are not fully consistent. Check actual circuit before treating any text as an electrical verification.
 - README claims Config.local.h is ignored but reviewed .gitignore does not list it explicitly.
-- No physical current, wiring or compile verification was performed by the AI.
+- No physical current or wiring verification was performed; the V1.02 compile/link was performed by the owner, not the AI.
 
 ## 7. Software donor map
 
@@ -138,4 +145,4 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 4. Take the technical lead on requested patches/porting. Ask only for missing material hardware or test facts, and do not make speculative changes.
 5. Report actual results and update this document when project decisions change.
 
-Current next action: owner selects the first implementation task from TODO.md. Static audit complete; no firmware/GUI/OSA code port or patch has been performed.
+Current next action: owner selects the next task. V1.02 compile/link passed; execute the off-screen smoke test when an ESP32 is available, then validate the actual TFT when instructed. Static donor audit complete; donor firmware/GUI/OSA port not started. No fabrication or final hardware selection implied.
