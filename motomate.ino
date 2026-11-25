@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "Splash.h"
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7735.h>
@@ -70,11 +71,27 @@ static void displaySmokeTest() {
   frame.drawPixel(0, 0, uint16_t(0xFFFF));
   frame.drawPixel(159, 127, uint16_t(0x0000));
   const bool ok = frame.width() == 160 && frame.height() == 128
-               && frame.readPixel(0, 0) == 0xFFFFFF
+               && frame.readPixel(0, 0) == 0xFFFF
                && frame.readPixel(159, 127) == 0x000000;
-  frame.deleteSprite();
   Serial.println(ok ? "[TFT] PASS: 160x128 RGB565 sprite and pixel readback"
                     : "[TFT] FAIL: sprite dimensions or pixel readback");
+
+  const SplashMode modes[] = {
+    SplashMode::Initialising, SplashMode::Maintenance,
+    SplashMode::BleUpload, SplashMode::LogUpload,
+    SplashMode::FirmwareUpdate, SplashMode::RiderReady,
+    SplashMode::BatteryCheck
+  };
+  bool splashOk = true;
+  for (auto mode : modes) {
+    // Synthetic values only. No sensors or radio are enabled.
+    splashOk &= drawSplash(frame, mode, "TEST", 12.60f, 24.5f);
+    splashOk &= frame.readPixel(8, 36) == uint16_t(0xE8A2);
+  }
+  splashOk &= drawSplash(frame, SplashMode::BatteryCheck);
+  frame.deleteSprite();
+  Serial.println(splashOk ? "[SPLASH] PASS: 7 modes and invalid-reading placeholders"
+                          : "[SPLASH] FAIL: renderer fit or background pixel");
 }
 
 void setup() {
