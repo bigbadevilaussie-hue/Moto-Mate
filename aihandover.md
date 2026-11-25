@@ -28,6 +28,10 @@ Moto-Mate MkII is Bike-Mate running on a different ESP32 with new peripheral mod
 - This explicitly supersedes any older clean-slate **software** wording in Moto-Mate README.md or project.md. The new hardware design remains distinct.
 - Do not start porting or coding until the owner requests a specific task. The handover commit does not authorize starting the port now.
 
+### Cleaned and optimised direct port — owner direction 2026-11-25
+
+The owner now explicitly requests auditing and cleaning ESP32 code as it is ported, not copying accumulated dead code, duplicate paths, useless loops or inconsistent naming. Preserve working functionality and interfaces; remove verified dead code, fix evidenced faults and optimise measurable battery/CPU/flash costs in small tested module patches. This refines the 95% reuse intent, not the protected BLE/Wi-Fi rules. No GUI audit or rewrite requested. The full static donor audit and 47 open tickets are in [TODO.md](TODO.md), donor V6.49 commit bc5766c. Read the backlog before porting any module; source findings are not runtime test results. BLE/Wi-Fi protected changes still require demonstrated need and discussion. Owner confirms Bike-Mate asleep draw was 0.001 A (1 mA) on the bench PSU; Moto-Mate must match or beat this at supply input and measure complete wake-cycle energy.
+
 ## 2. Ownership and workflow
 
 ChatGPT is the technical lead for Moto-Mate and is responsible for performing all requested patching and porting through GitHub, rather than routinely handing the owner scripts or manual edits. The owner directs priorities and approves scope; the owner handles physical hardware and local testing as needed. This supersedes the older README wording that the owner edits all files himself.
@@ -130,4 +134,4 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 4. Take the technical lead on requested patches/porting. Ask only for missing material hardware or test facts, and do not make speculative changes.
 5. Report actual results and update this document when project decisions change.
 
-Current next action: none until the owner requests the first implementation task.
+Current next action: owner selects the first implementation task from TODO.md. Static audit complete; no firmware/GUI/OSA code port or patch has been performed.
