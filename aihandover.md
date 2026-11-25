@@ -17,7 +17,11 @@ Engineering implications (implementation subject to owner direction and evidence
 - Preserve logs across sleeps and failed uploads; defer nonessential activity when battery preservation requires it. Retain the proven donor software wherever possible and do not modify protected BLE/Wi-Fi code without demonstrated necessity and discussion.
 - Validate the effect of changes on the battery budget before accepting them. Exact low-voltage cutoffs, sampling cadence changes and retry limits require review against the donor and owner agreement; do not invent or implement them in this handover.
 
-## 1. Major project rule: DIRECT PORT, NOT A REWRITE
+## 1. Major project rule: CLEAN FIRMWARE PORT
+
+**Latest precedence — 2026-11-26.** Owner direction (2026-11-26): this is the opportunity to remove accumulated firmware technical debt. Bike-Mate is the functional reference, not a line-count or implementation constraint. The previous approximately 95% reuse target is no longer a firmware acceptance criterion. Reuse clean, proven implementations; replace unnecessarily complicated, blocking, duplicated or obsolete implementations where justified by the audit and verified against the required behaviour. Do not copy bad code merely to preserve reuse. Preserve functional and host/data compatibility, battery-first policy, core 2.0.17, and the explicitly protected BLE/Wi-Fi implementation and proven recovery sequence. Protected changes still require separate owner approval. GUI remains essentially a straight copy. This is not permission to discard live features, rewrite proven code for style, or modify the donor/OSA without scope approval.
+
+The earlier direct-port directions below are historical context, subordinate to this clarification.
 
 Moto-Mate MkII is Bike-Mate running on a different ESP32 with new peripheral modules. The owner's target is to reuse approximately 95% of both existing ESP32 firmware and GUI code. This is a target, not a measured percentage.
 
