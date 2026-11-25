@@ -1,7 +1,7 @@
 # Moto-Mate — AI Handover
 
 Last updated: 2026-11-26  
-Status: V1.03 splash framework; owner compile/link passed, runtime pending. Dependency-ordered [port plan](port-plan.md) documented; no additional firmware port started.  
+Status: V1.04 fresh coordinator foundation implemented with owner approval; native core tests passed, Arduino compile and hardware runtime pending. V1.03 last owner-verified compile. See [runtime-framework.md](runtime-framework.md).  
 Read this file first when starting a new Moto-Mate chat, then inspect current Git HEAD and the relevant source files. This is the owner's latest direction, not a substitute for live repository contents.
 
 ## 0. Project Prime Directive — SAVE THE BATTERY AT ALL COSTS
@@ -151,4 +151,4 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 4. Take the technical lead on requested patches/porting. Ask only for missing material hardware or test facts, and do not make speculative changes.
 5. Report actual results and update this document when project decisions change.
 
-Current next action: review [port-plan.md](port-plan.md); owner selects the first implementation task (recommended coordinator/main-loop inventory and foundation). V1.03 compile/link passed, runtime pending. Static donor audit complete; donor firmware/GUI/OSA port not started. No fabrication or final hardware selection implied.
+Current next action: owner compiles V1.04 on locked toolchain and checks expected bench serial states when hardware is available. Then implement safe GPIO/sleep lifecycle and early button service in separately tested patches. Fresh coordinator approved; integrate proven donor functions into it, do not transplant donor setup/loop. No fabrication, final hardware selection, protected changes or production deployment implied.

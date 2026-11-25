@@ -1,6 +1,6 @@
 # Moto-Mate — dependency-ordered port plan
 
-2026-11-26. Planning only; no firmware port authorised by this document alone.
+2026-11-26. Owner approved fresh setup/loop coordinator first; V1.04 foundation implemented, Arduino compile pending. Later subsystem patches remain individually scoped.
 Donor Bike-Mate V6.49 bc5766c319da25622db1f2c86b58339afd07d5ad. Destination V1.03 b2d36d88605a7b6ffeae97e979727b6713cb3b35. Source of findings: [TODO.md](TODO.md), 32 tracked donor source files, 47 open tickets (13 P0, 17 P1, 14 P2, 3 P3). Every ticket mapped below; mapping is not closure.
 
 ## Owner priorities and constraints
@@ -18,7 +18,7 @@ Phase 1: breadboard ESP32 + TFT on USB-C to iMac, sensors as required and bench 
 | Stage | Candidate | Scope and verification | Audit IDs (MM-) |
 | --- | --- | --- | --- |
 | 0 | Display baseline — Splash.cpp/h, Config.h, motomate.ino | Owner compile/link V1.03 passed; runtime/artwork pending. | 041 |
-| 1 | Coordinator foundation — motomate.ino; trace and scheduling interfaces | Map donor transitions, blocking calls, ownership and deadlines. Instrument max loop gap and each service; prove idle-from-boot watchdog. Rebuild the coordinator incrementally where justified; preserve the documented transition behaviour unless an approved fix changes it. | 007,008,042 |
+| 1 | Coordinator foundation — motomate.ino; trace and scheduling interfaces | Map donor transitions, blocking calls, ownership and deadlines. Instrument max loop gap and each service; prove idle-from-boot watchdog. Fresh coordinator first (V1.04), with donor behaviour introduced incrementally as real services. Preserve documented functional transitions unless an approved fix changes them. See runtime-framework.md. | 007,008,042 |
 | 2 | Power / sleep — Config.h; S3 power/wake service | Safe rail/BLK/buzzer/GPS states, GPIO13 wake, timer wake, holds, measured current and wake energy. Keep physical power separate from logical ACC. | 009,013 |
 | 3 | Button — Early wake-cause capture and single button event owner | Test release, bounce, held button, rapid clicks, startup latency and return to sleep. Double-click battery check; single-click rider ready and long-press maintenance are proposed; agree timing. Existing 10k pull-up; optional capacitor only if evidence. | 043 |
 | 4 | Clock — Platform time, NVS epoch restore/save, sync boundary | Remove dead tick counter; separate monotonic elapsed time from wall time. Simulate forward/backward corrections, invalid epoch, reboot; measure RTC drift across sleep against OSA. External RTC candidate not selected. | 014,015,031 |

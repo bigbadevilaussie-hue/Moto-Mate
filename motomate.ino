@@ -1,106 +1,101 @@
 #include "Config.h"
-#include "Splash.h"
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_ST7735.h>
-#include <LovyanGFX.hpp>
-#include <Adafruit_SHT4x.h>
-#include <Adafruit_MPU6050.h>
-#include <TinyGPSPlus.h>
-#include <BLEDevice.h>
-#include <BLEServer.h>
-#include <BLEUtils.h>
-#include <BLE2902.h>
-#include <LittleFS.h>
+#include "Runtime.h"
+#include "BenchDiagnostics.h"
+#include <esp_sleep.h>
+#include <esp_timer.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
-#define DEST_FS_USES_LITTLEFS
-#include <ESP32-targz.h>
+namespace {
+// V1.04 is a USB bench framework, not field firmware. These are test
+// budgets only; no hardware is powered up and no deep sleep is entered.
+constexpr mm::TimeUs BENCH_WAKE_US = 10000000;
+constexpr mm::TimeUs USB_SETTLE_US = 1500000;
+constexpr mm::TimeUs DISPLAY_TEST_BUDGET_US = 250000;
+constexpr mm::TimeUs REPORT_BUDGET_US = 10000;
+mm::Coordinator runtime(BENCH_WAKE_US);
+mm::Periodic reportTimer(1000000);
+mm::State reportedState = mm::State::Boot;
+esp_sleep_wakeup_cause_t wakeCause;
 
-// Temporary display smoke test. No TFT or backlight is initialised.
-class MotoDisplay : public lgfx::LGFX_Device {
-  lgfx::Bus_SPI bus;
-  lgfx::Panel_ST7735S panel;
-
-public:
-  MotoDisplay() {
-    auto b = bus.config();
-    b.spi_host = SPI2_HOST;
-    b.spi_mode = 0;
-    b.freq_write = 16000000;  // provisional bench setting
-    b.pin_sclk = TFT_SCLK_PIN;
-    b.pin_mosi = TFT_MOSI_PIN;
-    b.pin_miso = -1;
-    b.pin_dc = TFT_DC_PIN;
-    bus.config(b);
-    panel.setBus(&bus);
-
-    auto p = panel.config();
-    p.pin_cs = TFT_CS_PIN;
-    p.pin_rst = TFT_RST_PIN;
-    p.pin_busy = -1;
-    p.panel_width = 128;
-    p.panel_height = 160;
-    // Offsets, inversion and colour order require physical panel validation.
-    p.readable = false;
-    panel.config(p);
-    setPanel(&panel);
-  }
-};
-
-static MotoDisplay display;
-
-static void displaySmokeTest() {
-  lgfx::LGFX_Sprite frame(&display);
-  frame.setColorDepth(16);
-  if (!frame.createSprite(160, 128)) {
-    Serial.println("[TFT] FAIL: sprite allocation");
-    return;
-  }
-
-  frame.fillScreen(uint16_t(0x0000));
-  frame.fillRect(0, 0, 160, 64, uint16_t(0x051F));
-  frame.fillRect(0, 64, 160, 64, uint16_t(0x9A60));
-  frame.drawLine(12, 82, 148, 46, uint16_t(0xFFFF));
-  frame.drawCircle(80, 64, 28, uint16_t(0xFFFF));
-  frame.setTextColor(uint16_t(0xFFFF));
-  frame.setTextSize(2);
-  frame.drawString("MOTO-MATE", 24, 8);
-  frame.drawString("14.2V", 48, 100);
-
-  // Known pixels in the RAM sprite, not physical panel readback.
-  frame.drawPixel(0, 0, uint16_t(0xFFFF));
-  frame.drawPixel(159, 127, uint16_t(0x0000));
-  const bool ok = frame.width() == 160 && frame.height() == 128
-               && frame.readPixel(0, 0) == 0xFFFF
-               && frame.readPixel(159, 127) == 0x000000;
-  Serial.println(ok ? "[TFT] PASS: 160x128 RGB565 sprite and pixel readback"
-                    : "[TFT] FAIL: sprite dimensions or pixel readback");
-
-  const SplashMode modes[] = {
-    SplashMode::Initialising, SplashMode::Maintenance,
-    SplashMode::BleUpload, SplashMode::LogUpload,
-    SplashMode::FirmwareUpdate, SplashMode::RiderReady,
-    SplashMode::BatteryCheck
-  };
-  bool splashOk = true;
-  for (auto mode : modes) {
-    // Synthetic values only. No sensors or radio are enabled.
-    splashOk &= drawSplash(frame, mode, "TEST", 12.60f, 24.5f);
-    splashOk &= frame.readPixel(8, 36) == uint16_t(0xE8A2);
-  }
-  splashOk &= drawSplash(frame, SplashMode::BatteryCheck);
-  frame.deleteSprite();
-  Serial.println(splashOk ? "[SPLASH] PASS: 7 modes and invalid-reading placeholders"
-                          : "[SPLASH] FAIL: renderer fit or background pixel");
+mm::TimeUs nowUs() {
+  return static_cast<mm::TimeUs>(esp_timer_get_time());
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(1500);  // USB serial enumeration for the temporary bench test
+void reportMetrics() {
+  const auto& m = runtime.metrics();
+  Serial.printf("[LOOP] awake_us=%llu max_gap_us=%llu max_service_us=%llu overruns=%lu\n",
+                static_cast<unsigned long long>(runtime.awakeUs(nowUs())),
+                static_cast<unsigned long long>(m.maxGapUs),
+                static_cast<unsigned long long>(m.maxServiceUs),
+                static_cast<unsigned long>(m.overruns));
+}
+
+void serviceBoot(mm::TimeUs now) {
+  // Defer one-off diagnostics for USB enumeration; never block setup.
+  if (runtime.awakeUs(now) < USB_SETTLE_US) return;
   Serial.println("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION);
-  displaySmokeTest();
+  Serial.printf("[WAKE] cause=%d; BENCH framework\n", static_cast<int>(wakeCause));
+  const auto started = nowUs();
+  const bool passed = runBenchDisplayDiagnostics();
+  const auto ended = nowUs();
+  runtime.recordService(ended - started, DISPLAY_TEST_BUDGET_US);
+  runtime.finishBoot(ended, passed);
+  reportTimer.start(ended);
+}
+
+void serviceMonitoring(mm::TimeUs now) {
+  // First real scheduled service: diagnostic reporting. Sensor, logging
+  // and transport services will be added only with their implementations.
+  if (!reportTimer.due(now)) return;
+  const auto started = nowUs();
+  reportMetrics();
+  runtime.recordService(nowUs() - started, REPORT_BUDGET_US);
+}
+
+void reportTransition() {
+  const auto state = runtime.state();
+  if (state == reportedState) return;
+  reportedState = state;
+  switch (state) {
+    case mm::State::Boot: break;
+    case mm::State::Monitoring: Serial.println("[STATE] MONITORING (BENCH)"); break;
+    case mm::State::SleepPending: Serial.println("[STATE] SLEEP_PENDING"); break;
+    case mm::State::BenchIdle: Serial.println("[STATE] BENCH_IDLE; deep sleep inhibited"); break;
+    case mm::State::Fault: Serial.println("[STATE] FAULT; bench diagnostics or wake budget failed"); break;
+  }
+}
+} // namespace
+
+void setup() {
+  // Capture wake cause before peripheral or serial initialisation.
+  wakeCause = esp_sleep_get_wakeup_cause();
+  runtime.begin(nowUs());
+  Serial.begin(115200);
 }
 
 void loop() {
-  delay(1000);
+  const auto now = nowUs();
+  runtime.tick(now);
+  reportTransition();
+  switch (runtime.state()) {
+    case mm::State::Boot:
+      serviceBoot(now);
+      break;
+    case mm::State::Monitoring:
+      serviceMonitoring(now);
+      break;
+    case mm::State::SleepPending:
+      // Real power shutdown/holds/sleep will replace this bench-only ack.
+      reportMetrics();
+      runtime.acknowledgeBenchSleep();
+      break;
+    case mm::State::BenchIdle:
+    case mm::State::Fault:
+      // Terminal bench states; no fake successful service or reset loop.
+      break;
+  }
+  reportTransition();
+  // Yield one RTOS tick; no fixed 50ms/1s application-loop delays.
+  vTaskDelay(1);
 }
