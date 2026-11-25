@@ -171,8 +171,11 @@ void commissionBanner(int wakeCause) {
 
 bool commissionStorage() {
   Serial.println("\n--- 02 / FLASH & OTA ----------------------------------");
-  Serial.printf("[FLASH] physical=%lu bytes speed=%lu Hz mode=%d\n", (unsigned long)ESP.getFlashChipSize(),
-      (unsigned long)ESP.getFlashChipSpeed(), int(ESP.getFlashChipMode()));
+  // Core 2.0.17 getFlashChipMode() dereferences an invalid register on this S3
+  // (owner-decoded V1.05 panic at Esp.cpp:356). Avoid that API entirely.
+  Serial.printf("[FLASH] physical=%lu bytes\n", (unsigned long)ESP.getFlashChipSize());
+  Serial.printf("[FLASH] speed=%lu Hz; mode not queried (core 2.0.17)\n",
+      (unsigned long)ESP.getFlashChipSpeed());
   const esp_partition_t* running = esp_ota_get_running_partition();
   const esp_partition_t* update = esp_ota_get_next_update_partition(nullptr);
   const esp_partition_t* part = fsPart();
