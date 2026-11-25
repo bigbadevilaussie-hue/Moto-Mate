@@ -83,6 +83,8 @@ Bike-Mate V6.49 includes the two-second engine-stop debounce. Recent donor histo
 
 ## 6. New hardware: use Moto-Mate files, not donor pin definitions
 
+**Hardware is preliminary, not locked.** The owner uses [Stripboard Editor](https://stripboard-editor.com/) to design the schematic and stripboard. The committed `moto14wires30cuts.json` is a preliminary editor project (14 wires, 30 cuts), not an approved fabrication layout. Circuit, pin assignments and BOM remain subject to owner approval. Use the latest editor JSON for design review; do not treat an earlier audit as fabrication sign-off.
+
 Read Config.h, motomate.ino, veroboard.md, project.md, codeprt.md, README.md and motomate_case.scad. The new platform is ESP32-S3 Super Mini HW-747, replacing the C3; 1.8-inch 128x160 ST7735 colour TFT replaces OLED; SHT40 temperature/humidity and MPU-6050 accelerometer/gyro; NEO-6M GPS; 12 V AGM supply with IRF4905 high-side switched rail; active buzzer; V4 enclosure.
 
 Current Config.h map (ESP-side signal names):
