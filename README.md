@@ -16,7 +16,7 @@ Protect the battery first. Collect all useful data needed to diagnose the batter
 
 Moto-Mate is the successor to [Bike-Mate](https://github.com/bigbadevilaussie-hue/Bike-Mate), which was built, installed on the bike and worked. Moto-Mate changes the hardware, not the proven software architecture.
 
-The reuse target is approximately **95% of existing ESP32 firmware and GUI code**. The GUI is essentially a straight copy of Bike-Mate's Python/Tk application. Adapt GPIOs, display, sensors, power management and other genuinely hardware-dependent behaviour as required. Preserve existing protocols, file formats, functionality and proven workarounds. No gratuitous refactoring.
+The reuse target is approximately **95% of existing ESP32 firmware and GUI code**. The GUI is essentially a straight copy of Bike-Mate's Python/Tk application. Adapt GPIOs, display, sensors, power management and other genuinely hardware-dependent behaviour as required. Preserve existing protocols, file formats, functionality and proven workarounds. Clean and optimise the ESP32 code as it comes over: remove verified dead code, consolidate duplicates and fix evidenced faults using [TODO.md](TODO.md). No gratuitous refactoring or unauthorised changes to protected BLE/Wi-Fi code.
 
 The reviewed donor is Bike-Mate firmware V6.49 (commit [bc5766c](https://github.com/bigbadevilaussie-hue/Bike-Mate/commit/bc5766c319da25622db1f2c86b58339afd07d5ad)); GUI v4.52 is the supplied visual reference. Check current Git HEAD before porting.
 
@@ -95,31 +95,83 @@ Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-r
 - [codeprt.md](codeprt.md) documents GPIO holds, TFT polarity/sleep, MPU sleep and other requirements. Resolve contradictory hardware statements with the schematic and actual circuit, rather than assuming old prose is correct.
 - Never commit or disclose Config.local.h or credentials. Verify ignore rules before creating local config; do not assume it is already ignored.
 
-## Development and patch discipline
+## Rules
 
-ChatGPT is the technical lead and performs all requested patching and porting through GitHub. The owner sets priorities and handles physical hardware/local testing. Do not begin unrelated work or deploy without instruction.
+Non-negotiable. Read first.
 
-- Read current source and Git history before editing. Never guess anchors, regex or current state. If an anchor misses, stop and re-read.
-- Never patch a theory; confirm the fault with the cheapest useful test first. Intermittent does not automatically mean broken. Preserve proven fixes.
-- One focused patch at a time, one file when practical. Test before progressing. Bump firmware version for firmware patches; [BOOT] MOTO-MATE VX.YZ identifies the actual running binary. Documentation-only changes do not require a firmware version bump.
-- Report the commit, specific verification step, actual test results and unresolved issues. Do not claim a remote commit has been pulled, compiled or flashed.
-- Communicate directly, no lectures or unsolicited work/rest suggestions. The owner decides when to work.
+### Moto-Mate-specific precedence
 
-### Local shell rules (macOS zsh)
+The original owner rules below are retained verbatim. Apply the following later explicit owner decisions where they conflict:
 
-Verified local repo: /Users/nick/Documents/Arduino/motomate. **Every terminal command provided to the owner starts with cd.**
+- ChatGPT is technical lead and performs requested patching and porting directly through GitHub. The owner directs scope, approves protected changes and performs physical/local testing. Do not assume permission for unrelated edits or deployment. The original rule about the owner editing files himself is superseded only for requested GitHub work.
+- Read current GitHub source immediately before a patch instead of asking the owner to paste a file that is available through GitHub. If the relevant local contents differ or cannot be inspected, request current contents; never guess.
+- Every terminal command supplied to the owner starts with cd. Verified repository: /Users/nick/Documents/Arduino/motomate. The original shell examples below are historical quotations, not commands to paste unchanged.
+- Use /tmp Python scripts for local patches. The original python3 -c example is a read-only diagnostic, not a patch; prefer a script to avoid ambiguity.
+- Bike-Mate requires :PartitionScheme=min_spiffs. Confirm the Moto-Mate S3 board/partition configuration rather than assuming the donor FQBN is correct. Arduino ESP32 Core 2.0.17 ONLY.
+- Firmware patches require a version bump and verification against [BOOT] MOTO-MATE VX.YZ; documentation-only changes do not bump firmware. The donor boot marker remains [BOOT] BIKE-MATE VX.YZ.
+- For "fully commit" / "complete the commit", use the requested full commit workflow on the local repository when authorised. Direct GitHub commits do not imply access to or inclusion of unpushed local changes. Never commit secrets or Config.local.h; check ignore rules before staging everything. Tag a mentioned release version as instructed.
+- Clean and optimise the ESP32 direct port using [TODO.md](TODO.md). Preserve protected BLE and proven Wi-Fi sequence; no speculative changes.
 
-```bash
-cd ~/Documents/Arduino/motomate && git status -sb && git remote -v
-```
+### Tone
 
-Prefer direct GitHub edits for requested patches. If local shell patches are unavoidable, write Python scripts under /tmp and run them from a command beginning with cd. Avoid multiline heredoc pastes and unquoted zsh glob characters; use printf if needed. Scripts must fail nonzero on missing anchors, including exact newline mismatches. Do not use python3 -c for patching.
+- Be direct. No lectures. No explaining basic git concepts.
+- Talk like a competent senior dev, not a tutorial.
+- If you're about to explain something obvious, shut up and give the command.
+- No time-of-day references. No sleep/rest/break suggestions.
+- Nick decides when to work and when to stop.
+
+### Commits
+
+- "fully commit" / "complete the commit" = `git add -A`, commit, push to origin, tag if a version was mentioned.
+- Never say "working tree clean" unless asked for status.
+- Never ask to re-check output already pasted.
+
+### Shell - zsh
+
+- Multi-line pastes break. `#` triggers history expansion.
+- **Write patches as Python scripts to `/tmp/` and run with `python3 /tmp/patch.py`.** Never paste heredocs directly into the shell.
+- Every patch script must exit non-zero on anchor miss. Silent no-ops are worse than crashes.
+- Bike-Mate compile requires `:PartitionScheme=min_spiffs`.
+- zsh bracketed-paste mangles multi-line pastes even inside heredocs - lines at the boundary get eaten silently. Fix once: `echo 'unset zle_bracketed_paste' >> ~/.zshrc` then `exec zsh`. Or run `bash` for the session.
+- If a heredoc still misbehaves: write the script with `printf '%s\n' \` and one `'line' \` per line, redirect to `/tmp/x.py`, then `python3 /tmp/x.py`.
+- Never paste Python with `python3 -c`. Always `/tmp/x.py`.
+- A Python string anchor matches the exact bytes. If a file ends without a trailing newline, `"...;\n"` will MISS. Check with `python3 -c 'print(repr(open("f").read()[-40:]))'` before writing the anchor.
+
+### Patch discipline
+
+- **Never patch a file you haven't seen the current contents of.** If the last paste was more than one exchange ago, ask again.
+- **Never guess anchors or regex.** Read the file. Grep for the exact line. If the anchor misses, stop and ask for current contents. Do not guess.
+- **One patch. One file when possible. Test before the next.**
+- **Version bump is part of every patch.** `[BOOT] BIKE-MATE VX.YZ` is the ground truth for which binary is on the board. Never trust a paste that disagrees with the log.
+- **After every patch, state how to verify it worked.** A specific log line, OLED state, or endpoint response. "Compile and flash" is not verification.
+
+### Diagnosing
+
+- **Never patch a theory.** Propose it, propose the cheapest way to confirm, get the answer, then patch.
+- **Git history is the answer more often than the code.** When something regressed, `git log --oneline -- <file>` and `git log -L` show when.
+- **If a subsystem has a comment like "proven 72/72" or "two days and four AIs", do not touch it on a theory.** Ask why it's that shape first.
+- **Intermittent != broken.** The fix is usually a retry, not a rewrite.
+
+### Communication
+
+- Answer, then stop. Do not explain three things at once.
+- Do not write nine scripts at once. One file, one patch, one command.
+- Nick edits files himself. Ask before assuming automation.
+- "Cages" = cars.
+
+### Session hygiene
+
+- This is one stateful session, not isolated replies.
+- Before proposing a fix, ask: "have I confirmed current state, or am I assuming it?"
+- Before saying "this is a bug", ask: "could this be load-bearing for a reason I don't see?"
+- Read all pasted output. The answer is usually in the line you skimmed.
 
 ## Project documents
 
 | File | Purpose |
 | --- | --- |
 | [aihandover.md](aihandover.md) | Current project direction, repository references, technical lead responsibilities and new-chat handover |
+| [TODO.md](TODO.md) | Full ESP32 audit and prioritised porting backlog |
 | [Config.h](Config.h) | GPIO assignments and firmware version |
 | [motomate.ino](motomate.ino) | Current firmware skeleton |
 | [moto14wires30cuts.json](moto14wires30cuts.json) | Latest committed schematic and stripboard layout |
