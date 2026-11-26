@@ -243,3 +243,7 @@ See [B1 commissioning](ble-commissioning.md). Compile and physical tests pending
 ## V1.08 sleep commissioning
 
 See [B2 sleep test](sleep-commissioning.md). Dedicated USB-only build, real timer sleep, terminal deep sleep after three wakes. Compile and physical validation pending.
+
+## V1.09 USB power bench
+
+[30s awake / 30s deep sleep](power-bench.md), repeating, radios off. Compile and measurements pending. Not field mode.
