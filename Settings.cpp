@@ -67,11 +67,12 @@ String settingsJson() {
   const bool recovery=!healthy || (current.profile==mm::Profile::Field && !field);
   char out[420];
   snprintf(out,sizeof(out),
-    "{\"profile\":\"%s\",\"effective_profile\":\"%s\",\"bench_sleep\":%s,\"bench_sleep_active\":%s,\"verbose\":%s,\"verbose_active\":%s,\"field_ready\":%s,\"bench_sleep_ready\":%s,\"nvs_ok\":%s,\"nvs_state\":\"%s\",\"schema\":1}",
+    "{\"profile\":\"%s\",\"effective_profile\":\"%s\",\"bench_sleep\":%s,\"bench_sleep_active\":%s,\"bench_sleep_log\":%s,\"verbose\":%s,\"verbose_active\":%s,\"field_ready\":%s,\"bench_sleep_ready\":%s,\"nvs_ok\":%s,\"nvs_state\":\"%s\",\"schema\":1}",
     current.profile==mm::Profile::Bench?"BENCH":"FIELD",
     recovery?"RECOVERY":(field?"FIELD":"BENCH"),
     current.benchSleep?"true":"false",
     healthy && mm::benchSleepActive(current)?"true":"false",
+    current.benchSleepLog?"true":"false",
     current.verbose?"true":"false",
     healthy && mm::verboseActive(current)?"true":"false",
     mm::FIELD_READY?"true":"false",mm::BENCH_SLEEP_READY?"true":"false",

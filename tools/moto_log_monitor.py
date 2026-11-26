@@ -16,6 +16,7 @@ def main():
     g.add_argument("--start",type=int,choices=range(1,5))
     g.add_argument("--status",action="store_true")
     g.add_argument("--seal",action="store_true")
+    g.add_argument("--sleep-arm",action="store_true",help="arm three radio-free sleep log cycles; manual reset required")
     a=p.parse_args()
     keyfile=Path(__file__).resolve().parents[1]/"Ota.local.h"
     m=re.search(r'^#define MOTO_OTA_KEY "([a-f0-9]{64})"$',keyfile.read_text(),re.M)
@@ -30,13 +31,15 @@ def main():
         req=urllib.request.Request("http://"+ip+path,data=data,headers={"X-Moto-Key":m.group(1)})
         with opener.open(req,timeout=10) as res:
             return json.loads(res.read(2048))
-    if a.start is not None:
+    if a.start is not None or a.sleep_arm:
         ident=call("/log/identity")
         history=json.loads((Path.home()/"Documents"/"MotoMate_log_identity.json").read_text())
         gen=ident.get("generation")
         if ident.get("state")!="valid" or gen not in history.get("devices",{}).get(ident.get("device_mac"),[]):
             raise SystemExit("Unverified identity")
-        result=call("/log/monitor/start",{"generation":gen,"count":a.start})
+        result=call("/log/sleep-arm",{"generation":gen}) if a.sleep_arm else call("/log/monitor/start",{"generation":gen,"count":a.start})
+        if a.sleep_arm and not (result.get("bench_sleep_log") and result.get("bench_sleep") and result.get("nvs_ok")):
+            raise SystemExit("Sleep logging arm readback failed")
     elif a.seal: result=call("/log/monitor/seal",{})
     else: result=call("/log/monitor")
     print(json.dumps(result,indent=2))

@@ -30,3 +30,7 @@ bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count);
 bool storageMonitorSeal();
 void storageMonitorCancel(const char* reason);
 void storageMonitorPoll(uint64_t now);
+
+// Explicit radio-free sleep logging commissioning, one sample per selected wake.
+bool storageSleepLogReady(uint64_t generation);
+bool storageSleepSample(uint32_t bootId,uint32_t cycle);

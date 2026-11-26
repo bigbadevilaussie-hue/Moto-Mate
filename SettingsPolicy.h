@@ -6,18 +6,21 @@ struct Settings {
   Profile profile = Profile::Bench;
   bool benchSleep = false;
   bool verbose = false;
+  bool benchSleepLog = false; // explicit one-shot sleep logging commissioning
 };
 constexpr uint32_t SETTINGS_V1 = 0x4d4d0100UL;
 // One NVS value: schema and all flags committed together.
 inline uint32_t encode(const Settings& s) {
   return SETTINGS_V1 | (s.profile==Profile::Field?1u:0u)
-      | (s.benchSleep?2u:0u) | (s.verbose?4u:0u);
+      | (s.benchSleep?2u:0u) | (s.verbose?4u:0u) | (s.benchSleepLog?8u:0u);
 }
 inline bool decode(uint32_t word, Settings& s) {
-  if ((word & ~uint32_t(7)) != SETTINGS_V1) return false;
+  if ((word & ~uint32_t(15)) != SETTINGS_V1) return false;
+  if ((word&8u) && ((word&3u)!=2u)) return false;
   s.profile=(word&1)?Profile::Field:Profile::Bench;
   s.benchSleep=(word&2)!=0;
   s.verbose=(word&4)!=0;
+  s.benchSleepLog=(word&8)!=0;
   return true;
 }
 // Field must never inherit bench overrides. Capability gates are false

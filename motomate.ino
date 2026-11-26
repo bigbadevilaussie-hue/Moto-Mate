@@ -10,6 +10,7 @@
 #include "BenchSensors.h"
 #include "Storage.h"
 #include "LogIdentity.h"
+#include "LogSleepPolicy.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -27,6 +28,8 @@ mm::TimeUs retryAt=0;
 mm::TimeUs countdownEnd=0;
 unsigned shown=999;
 constexpr uint32_t BENCH_MAGIC=0x4D4D0119;
+constexpr uint32_t BENCH_LOG_MAGIC=0x4D4D0131;
+bool sleepLogEnabled=false,sleepLogAttempted=false,sleepLogSuccess=false;
 RTC_DATA_ATTR uint32_t benchMagic=0;
 RTC_DATA_ATTR uint32_t benchCycle=0;
 RTC_DATA_ATTR uint64_t priorAwakeUs=0;
@@ -55,6 +58,11 @@ void abortCountdown(const char* why) {
 void countdownPoll() {
   const auto now=nowUs();
   if (digitalRead(WAKE_BTN_PIN)==LOW) { abortCountdown("button held"); return; }
+  if (mm::log::sleepLogDue(sleepLogEnabled,sleepLogAttempted,benchCycle,now)) {
+    sleepLogAttempted=true;
+    // No retries, no radio, no sleep cancellation on log failure.
+    sleepLogSuccess=storageSleepSample(otaBootId(),benchCycle);
+  }
   if (now>=countdownEnd) {
     if (!sensorsQuiesce()) { abortCountdown("MPU sleep unverified"); return; }
     if (!displaySleepCountdown(0)) { abortCountdown("display unavailable"); return; }
@@ -62,7 +70,7 @@ void countdownPoll() {
     if (!hardwareButtonReleased(nowUs()) || nowUs()>mm::BENCH_AWAKE_US+1000000ULL) {
       abortCountdown("button or awake deadline"); return;
     }
-    benchMagic=BENCH_MAGIC;
+    benchMagic=mm::log::sleepLogContinue(sleepLogEnabled,sleepLogSuccess,benchCycle)?BENCH_LOG_MAGIC:BENCH_MAGIC;
     priorAwakeUs=nowUs();
     Serial.printf("[SLEEP] cycle=%lu timer=30s ext0=GPIO13 LOW pre_sleep_us=%llu; TFT retained\n",
         (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
@@ -101,13 +109,16 @@ void setup() {
   diagnosticSchedule.start(nowUs());
   otaInit();
   const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
-  const bool continuing=bench && cause==ESP_SLEEP_WAKEUP_TIMER &&
-      benchMagic==BENCH_MAGIC && benchCycle>0 && benchCycle<0xFFFFFFFFUL;
+  const bool qualifiedTimer=esp_reset_reason()==ESP_RST_DEEPSLEEP && cause==ESP_SLEEP_WAKEUP_TIMER;
+  const bool continuing=bench && qualifiedTimer &&
+      (benchMagic==BENCH_MAGIC || benchMagic==BENCH_LOG_MAGIC) && benchCycle>0 && benchCycle<0xFFFFFFFFUL;
   const bool requested=bench && mm::benchSleepActive(settingsCurrent());
+  sleepLogEnabled=(continuing && benchMagic==BENCH_LOG_MAGIC) ||
+    (requested && settingsCurrent().benchSleepLog && cause==ESP_SLEEP_WAKEUP_UNDEFINED);
   bool consumed=!requested;
   if (requested) {
     auto next=settingsCurrent();
-    next.benchSleep=false;
+    next.benchSleep=false; next.benchSleepLog=false;
     consumed=settingsSave(next);
   }
   // Timer wake alone may repeat the test. Button wake, reset and power loss
@@ -124,6 +135,7 @@ void setup() {
     if (nowUs()<mm::BENCH_AWAKE_US) {
       countdownEnd=mm::BENCH_AWAKE_US;
       activity=Activity::BenchCountdown;
+      Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
       Serial.printf("[SLEEP] BENCH 30/30 cycle=%lu prior_awake_us=%llu; button cancels\n",
           (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
       return;

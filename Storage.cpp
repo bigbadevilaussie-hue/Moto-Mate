@@ -122,7 +122,7 @@ bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& r
   if(strcmp(logIdState,"valid") || logId.generation!=generation ||
      usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
   mm::log::Header h={};
-  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=30;
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=31;
   if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
   h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
@@ -240,7 +240,7 @@ bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count) {
   if(strcmp(logIdState,"valid") || generation!=logId.generation || usedBytes>totalBytes ||
      totalBytes-usedBytes<=16384+4096) return false;
   MonitorSession next;
-  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=30;
+  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=31;
   if(esp_efuse_mac_get_default(next.header.device_mac)!=ESP_OK) return false;
   next.header.generation=generation; next.header.opened_boot_id=bootId; next.header.nominal_period_ms=300000;
   next.target=count; next.active=true; next.state="sampling";
@@ -289,6 +289,27 @@ void storageMonitorPoll(uint64_t now) {
       (unsigned long long)h.file_seq,monitor.records,unsigned(p.validity));
   if(monitor.records>=monitor.target) { storageMonitorSeal(); return; }
   monitor.due=mm::log::nextMonitorDue(now,false);
+}
+bool storageSleepLogReady(uint64_t generation) {
+  if(!mounted || monitor.active) return false;
+  refreshIdentity(); refreshSpace();
+  return !strcmp(logIdState,"valid") && generation==logId.generation &&
+    usedBytes<=totalBytes && totalBytes-usedBytes>16384+4096;
+}
+bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
+  const uint64_t start=esp_timer_get_time();
+  storageBeginMaintenance(); // only explicitly armed sleep cycles mount
+  if(!mounted || strcmp(logIdState,"valid") || !storageMonitorStart(logId.generation,bootId,1)) {
+    Serial.printf("[LOG] sleep cycle=%lu unavailable; sleep continues\n",(unsigned long)cycle);
+    return false;
+  }
+  monitor.due=0;
+  storageMonitorPoll(esp_timer_get_time()); // one checked append and seal
+  const bool ok=!strcmp(monitor.state,"complete") && monitor.records==1;
+  Serial.printf("[LOG] sleep cycle=%lu result=%s sequence=%016llx high=%016llx elapsed_us=%llu; sleep continues\n",
+    (unsigned long)cycle,monitor.state,(unsigned long long)monitor.header.file_seq,
+    (unsigned long long)logId.reservedThrough,(unsigned long long)(esp_timer_get_time()-start));
+  return ok;
 }
 String storageJson() {
   char b[380];

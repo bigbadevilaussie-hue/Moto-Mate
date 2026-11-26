@@ -347,6 +347,18 @@ void sealMonitor() {
   const bool ok=storageMonitorSeal();
   server.send(ok?200:409,"application/json",storageMonitorJson());
 }
+void armSleepLog() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0;
+  if(server.args()!=1 || !parseGeneration(server.arg("generation"),generation) ||
+     settingsCurrent().benchSleep || !storageSleepLogReady(generation)) {
+    server.send(409,"text/plain","idle provisioned BENCH and free space required"); return;
+  }
+  auto next=settingsCurrent();
+  next.benchSleep=true; next.benchSleepLog=true;
+  if(!settingsSave(next)) { server.send(503,"application/json",settingsJson()); return; }
+  server.send(200,"application/json",settingsJson());
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -366,6 +378,7 @@ void startServer() {
   server.on("/log/monitor",HTTP_GET,getMonitor);
   server.on("/log/monitor/start",HTTP_POST,startMonitor);
   server.on("/log/monitor/seal",HTTP_POST,sealMonitor);
+  server.on("/log/sleep-arm",HTTP_POST,armSleepLog);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());
@@ -373,6 +386,7 @@ void startServer() {
 }
 
 void otaInit() { bootId=esp_random(); }
+uint32_t otaBootId() { return bootId; }
 void otaStart() {
   static bool configured=false;
   if (!configured) { startServer(); configured=true; }

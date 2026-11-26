@@ -15,6 +15,11 @@ int main() {
   mm::Settings s;
   assert(!mm::decode(0,s));
   assert(!mm::decode(mm::SETTINGS_V1|8,s));
+  assert(!mm::decode(mm::SETTINGS_V1|11,s));
+  assert(!mm::decode(mm::SETTINGS_V1|16,s));
+  assert(mm::decode(mm::SETTINGS_V1|10,s) && s.benchSleepLog && s.benchSleep);
+  assert(mm::encode(s)==(mm::SETTINGS_V1|10));
+  assert(mm::decode(mm::SETTINGS_V1,s) && !s.benchSleepLog);
   assert(!mm::decode(0x4d4d0200,s));
   assert(mm::encode(s)==mm::SETTINGS_V1);
   puts("PASS: settings schema, all flags, invalid data and readiness gates");
