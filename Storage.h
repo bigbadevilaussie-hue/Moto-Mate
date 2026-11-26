@@ -19,3 +19,6 @@ bool storageRecoverTestLog(uint64_t generation,uint64_t seq,String& result);
 
 // Explicit read-only BENCH sealed monitor transfer; caller closes returned file.
 bool storageOpenBenchTransfer(uint64_t generation,uint64_t seq,fs::File& file,String& descriptor);
+
+// Explicit authenticated BENCH receipt. Exact fresh descriptor match required.
+const char* storageBenchAck(uint64_t generation,uint64_t seq,const String& supplied);

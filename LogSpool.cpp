@@ -70,7 +70,11 @@ Scan inspectFile(const char* relative,const char* full) {
   return s;
 }
 }
+bool benchIdentityAbsent(uint64_t g,uint64_t seq) {
+  return allAbsent(Kind::Monitor,g,seq,false) && allAbsent(Kind::Ride,g,seq,false);
+}
 bool inspectSealedMonitor(uint64_t g,uint64_t seq,Scan& result) {
+  if(!allAbsent(Kind::Ride,g,seq,false)) return false;
   char rel[PATH_BYTES],full[FULL_BYTES];
   if(!filename(Kind::Monitor,g,seq,Suffix::Bin,rel) || !fullPath(rel,full)) return false;
   // Refuse any ambiguous sibling, including an active or compressed copy.

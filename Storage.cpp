@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <string.h>
 #include <mbedtls/sha256.h>
+#include <unistd.h>
 
 namespace {
 const char* fsState="not_mounted";
@@ -111,7 +112,7 @@ bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& r
   if(strcmp(logIdState,"valid") || logId.generation!=generation ||
      usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
   mm::log::Header h={};
-  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=28;
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=29;
   if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
   h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
@@ -188,6 +189,32 @@ bool storageOpenBenchTransfer(uint64_t generation,uint64_t seq,fs::File& file,St
   if(n<=0 || size_t(n)>=sizeof(b)) { f.close(); return false; }
   descriptor=b; file=f;
   return bool(file);
+}
+const char* storageBenchAck(uint64_t generation,uint64_t seq,const String& supplied) {
+  if(!mounted) return "unavailable";
+  refreshIdentity();
+  if(strcmp(logIdState,"valid") || logId.generation!=generation || !seq || seq>logId.reservedThrough) return "unavailable";
+  fs::File file;
+  String expected;
+  if(!storageOpenBenchTransfer(generation,seq,file,expected)) {
+    // No tombstone: absence is observable but is never proof of a prior ACK.
+    return mm::log::benchIdentityAbsent(generation,seq)?"absent_unverified":"unavailable";
+  }
+  file.close();
+  // Exact canonical descriptor from a fresh local read. The authenticated
+  // BENCH host attests durability; firmware cannot verify host fsync itself.
+  if(supplied!=expected) return "receipt_mismatch";
+  char path[mm::log::PATH_BYTES],full[64];
+  if(!mm::log::filename(mm::log::Kind::Monitor,generation,seq,mm::log::Suffix::Bin,path)) return "unavailable";
+  const int n=snprintf(full,sizeof(full),"/littlefs%s",path);
+  if(n<=0 || size_t(n)>=sizeof(full)) return "unavailable";
+  // Single cooperative owner: no writer between fresh hash and unlink.
+  const bool removed=unlink(full)==0;
+  const bool absent=mm::log::benchIdentityAbsent(generation,seq);
+  refreshSpace();
+  if(!removed || !absent) return "removal_unconfirmed";
+  Serial.printf("[LOG] BENCH durable ACK seq=%016llx removed; used=%u\\n",(unsigned long long)seq,unsigned(usedBytes));
+  return "removed";
 }
 String storageJson() {
   char b[380];

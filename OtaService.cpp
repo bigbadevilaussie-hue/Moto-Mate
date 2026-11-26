@@ -311,6 +311,20 @@ void getLogTransfer(bool data) {
   Serial.printf("[LOG] BENCH read seq=%016llx sent=%u expected=%u; retained\n",
     (unsigned long long)seq,unsigned(sent),unsigned(expectedBytes));
 }
+void postLogAck() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0,seq=0;
+  if(server.args()!=4 || !parseGeneration(server.arg("generation"),generation) ||
+     !parseGeneration(server.arg("sequence"),seq) || server.arg("status")!="durable" ||
+     !server.hasArg("descriptor") || server.arg("descriptor").length()>511 ||
+     server.arg("descriptor").length()==0) {
+    server.send(400,"application/json","{\"state\":\"invalid_receipt\"}"); return;
+  }
+  const char* state=storageBenchAck(generation,seq,server.arg("descriptor"));
+  char b[120];
+  snprintf(b,sizeof(b),"{\"state\":\"%s\",\"sequence\":\"%016llx\"}",state,(unsigned long long)seq);
+  server.send(!strcmp(state,"removed")?200:409,"application/json",b);
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -326,6 +340,7 @@ void startServer() {
   server.on("/log/test-recover",HTTP_POST,testLogRecover);
   server.on("/log/descriptor",HTTP_GET,[](){ getLogTransfer(false); });
   server.on("/log/data",HTTP_GET,[](){ getLogTransfer(true); });
+  server.on("/log/ack",HTTP_POST,postLogAck);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());
