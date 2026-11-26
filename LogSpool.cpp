@@ -120,6 +120,21 @@ bool appendOne(const Header& h,size_t count,const uint8_t* record) {
   return finishWrite(fd,write(fd,record,RECORD_BYTES)==RECORD_BYTES) &&
     verifyRange(full,offset,record,RECORD_BYTES,offset+RECORD_BYTES);
 }
+bool recoverBenchOpen(uint64_t g,uint64_t seq,const uint8_t mac[6],Scan& result,Suffix& suffix) {
+  char rel[PATH_BYTES],full[FULL_BYTES]; uint8_t h[HEADER_BYTES];
+  if(!mac || !allAbsent(Kind::Ride,g,seq,false) ||
+     !allAbsent(Kind::Monitor,g,seq,true) ||
+     !filename(Kind::Monitor,g,seq,Suffix::Open,rel) || !fullPath(rel,full)) return false;
+  const int fd=open(full,O_RDONLY);
+  if(fd<0) return false;
+  struct stat st={};
+  const bool valid=fstat(fd,&st)==0 && S_ISREG(st.st_mode) &&
+    st.st_size>=static_cast<off_t>(HEADER_BYTES) && st.st_size<=static_cast<off_t>(MAX_RAW_BYTES) &&
+    readExact(fd,h,sizeof(h)) && filenameMatchesHeader(rel,h,sizeof(h)) &&
+    get(h+10,2)==1 && !memcmp(h+12,mac,6);
+  if(close(fd)!=0 || !valid) return false;
+  return recoverOpen(Kind::Monitor,g,seq,result,suffix);
+}
 bool recoverOpen(Kind k,uint64_t g,uint64_t seq,Scan& result,Suffix& suffix) {
   char rel[PATH_BYTES],source[FULL_BYTES],dstRel[PATH_BYTES],dst[FULL_BYTES];
   if(!filename(k,g,seq,Suffix::Open,rel) || !fullPath(rel,source) || !allAbsent(k,g,seq,true)) return false;

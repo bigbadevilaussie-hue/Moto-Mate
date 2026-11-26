@@ -3,6 +3,7 @@
 #include "LogSpool.h"
 #include "LogMonitorPolicy.h"
 #include "LogSleepCheckpoint.h"
+#include "LogInventoryPolicy.h"
 #include <esp_attr.h>
 #include "BenchSensors.h"
 #include "MotoClock.h"
@@ -125,7 +126,7 @@ bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& r
   if(strcmp(logIdState,"valid") || logId.generation!=generation ||
      usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
   mm::log::Header h={};
-  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=33;
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=34;
   if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
   h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
@@ -243,7 +244,7 @@ bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count) {
   if(strcmp(logIdState,"valid") || generation!=logId.generation || usedBytes>totalBytes ||
      totalBytes-usedBytes<=16384+4096) return false;
   MonitorSession next;
-  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=33;
+  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=34;
   if(esp_efuse_mac_get_default(next.header.device_mac)!=ESP_OK) return false;
   next.header.generation=generation; next.header.opened_boot_id=bootId; next.header.nominal_period_ms=300000;
   next.target=count; next.active=true; next.state="sampling";
@@ -314,11 +315,11 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
   if(ok) ok=esp_efuse_mac_get_default(mac)==ESP_OK;
   if(ok && cycle>1) {
     ok=resumed && count==cycle-1 && h.generation==logId.generation &&
-       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==33 &&
+       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==34 &&
        !memcmp(mac,h.device_mac,6) && verifySleepOpen(h,count);
   }
   if(ok && cycle==1) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=33;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=34;
     memcpy(h.device_mac,mac,6); h.generation=logId.generation;
     h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   }
@@ -348,6 +349,87 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
     (unsigned long long)h.file_seq,count,(unsigned long long)logId.reservedThrough,
     (unsigned long long)(esp_timer_get_time()-start));
   return ok;
+}
+void storageRecoverMaintenance() {
+  using namespace mm::log;
+  static bool done=false;
+  if(done || !mounted || monitor.active) return;
+  done=true;
+  refreshIdentity();
+  uint8_t mac[6]={};
+  if(strcmp(logIdState,"valid") || esp_efuse_mac_get_default(mac)!=ESP_OK) return;
+  DIR* d=opendir("/littlefs");
+  if(!d) { Serial.println("[LOG] maintenance recovery directory unavailable"); return; }
+  uint64_t pending[RECOVERY_MAX_FILES]={};
+  unsigned entries=0,count=0,deferred=0;
+  bool complete=true;
+  while(true) {
+    errno=0; dirent* e=readdir(d);
+    if(!e) { if(errno) complete=false; break; }
+    if(++entries>INVENTORY_MAX_ENTRIES) { complete=false; break; }
+    uint64_t g=0,seq=0; Suffix suffix=Suffix::Bad;
+    if(!parseMonitorName(e->d_name,g,seq,suffix) || g!=logId.generation ||
+       seq>logId.reservedThrough || suffix!=Suffix::Open) continue;
+    if(count<RECOVERY_MAX_FILES) pending[count++]=seq;
+    else ++deferred;
+  }
+  if(closedir(d)!=0) complete=false;
+  // No directory mutation during enumeration; refuse an incomplete scan.
+  if(!complete) { Serial.println("[LOG] maintenance recovery scan incomplete; all originals retained"); return; }
+  unsigned recovered=0,blocked=0;
+  for(unsigned i=0;i<count;++i) {
+    Scan scan={}; Suffix suffix=Suffix::Open;
+    const bool ok=recoverBenchOpen(logId.generation,pending[i],mac,scan,suffix);
+    if(ok) ++recovered; else ++blocked;
+    Serial.printf("[LOG] auto recover seq=%016llx result=%s records=%u; original bytes retained\n",
+      (unsigned long long)pending[i],ok?scanName(scan.classification):"blocked_preserved",unsigned(scan.records));
+  }
+  if(count) refreshSpace();
+  Serial.printf("[LOG] maintenance recovery scanned=%u recovered=%u blocked=%u deferred=%u\n",entries,recovered,blocked,deferred);
+}
+bool storageInventory(String& result) {
+  using namespace mm::log;
+  if(!mounted || monitor.active) return false;
+  refreshIdentity();
+  uint8_t mac[6]={};
+  if(strcmp(logIdState,"valid") || esp_efuse_mac_get_default(mac)!=ESP_OK) return false;
+  String body;
+  if(!body.reserve(6144)) return false;
+  char b[256];
+  snprintf(b,sizeof(b),"{\"device_mac\":\"%02x%02x%02x%02x%02x%02x\",\"generation\":\"%016llx\",\"reserved_through\":\"%016llx\",\"sealed_candidates\":[",
+    unsigned(mac[0]),unsigned(mac[1]),unsigned(mac[2]),unsigned(mac[3]),unsigned(mac[4]),unsigned(mac[5]),
+    (unsigned long long)logId.generation,(unsigned long long)logId.reservedThrough);
+  if(!body.concat(b)) return false;
+  DIR* d=opendir("/littlefs");
+  if(!d) return false;
+  unsigned entries=0,sealed=0,openCount=0,rec=0,bad=0,other=0;
+  bool complete=true,ok=true;
+  while(true) {
+    errno=0; dirent* e=readdir(d);
+    if(!e) { if(errno) complete=false; break; }
+    if(++entries>INVENTORY_MAX_ENTRIES) { complete=false; break; }
+    if(!strcmp(e->d_name,".") || !strcmp(e->d_name,"..")) continue;
+    uint64_t g=0,seq=0; Suffix suffix=Suffix::Bad;
+    if(!parseMonitorName(e->d_name,g,seq,suffix) || g!=logId.generation || seq>logId.reservedThrough) { ++other; continue; }
+    switch(suffix) {
+      case Suffix::Bin:
+        snprintf(b,sizeof(b),"%s\"%016llx\"",sealed?",":"",(unsigned long long)seq);
+        if(!body.concat(b)) ok=false;
+        ++sealed; break;
+      case Suffix::Open: ++openCount; break;
+      case Suffix::Recovered: ++rec; break;
+      case Suffix::Bad: ++bad; break;
+      default: ++other; break;
+    }
+    if(!ok) break;
+  }
+  if(closedir(d)!=0) complete=false;
+  if(!ok) return false;
+  snprintf(b,sizeof(b),"],\"complete\":%s,\"open\":%u,\"recovered\":%u,\"bad\":%u,\"other\":%u}",
+    complete?"true":"false",openCount,rec,bad,other);
+  if(!body.concat(b)) return false;
+  result=body;
+  return result.length()==body.length();
 }
 String storageJson() {
   char b[380];

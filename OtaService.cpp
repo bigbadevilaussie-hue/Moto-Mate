@@ -359,6 +359,13 @@ void armSleepLog() {
   if(!settingsSave(next)) { server.send(503,"application/json",settingsJson()); return; }
   server.send(200,"application/json",settingsJson());
 }
+void getInventory() {
+  if(!logCommissionAllowed()) return;
+  if(server.args()) { server.send(400,"text/plain","no arguments expected"); return; }
+  String body;
+  if(!storageInventory(body)) { server.send(409,"text/plain","inventory unavailable"); return; }
+  server.send(200,"application/json",body);
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -367,6 +374,7 @@ void startServer() {
   server.on("/ota",HTTP_POST,finishRequest,upload);
   server.on("/clock",HTTP_GET,getClock);
   server.on("/clock",HTTP_POST,setClock);
+  server.on("/log/inventory",HTTP_GET,getInventory);
   server.on("/log/identity",HTTP_GET,getLogIdentity);
   server.on("/log/identity",HTTP_POST,setLogIdentity);
   server.on("/log/test-sequence",HTTP_POST,testLogSequence);

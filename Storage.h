@@ -36,3 +36,7 @@ bool storageSleepLogReady(uint64_t generation);
 bool storageSleepSample(uint32_t bootId,uint32_t cycle);
 
 void storageSleepForget();
+
+// Only called after entering existing BENCH maintenance, never on normal sleep wakes.
+void storageRecoverMaintenance();
+bool storageInventory(String& result);

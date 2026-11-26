@@ -172,7 +172,10 @@ void loop() {
     case Activity::BenchCountdown: break;
     case Activity::Connecting:
       if (wifiPoll()) {
-        if (wifiConnected()) { otaStart(); activity=Activity::Maintenance; }
+        if (wifiConnected()) {
+          if(settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) storageRecoverMaintenance();
+          otaStart(); activity=Activity::Maintenance;
+        }
         else { retryAt=nowUs()+30000000ULL; activity=Activity::Retry; }
       }
       break;

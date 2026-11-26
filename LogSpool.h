@@ -20,3 +20,8 @@ namespace mm { namespace log {
 // Only for a qualified retained sleep checkpoint; validates complete open prefix and header.
 bool verifySleepOpen(const Header&,size_t count);
 } }
+
+namespace mm { namespace log {
+// Maintenance recovery: requires valid current BENCH header, factory MAC, no siblings.
+bool recoverBenchOpen(uint64_t generation,uint64_t seq,const uint8_t mac[6],Scan&,Suffix&);
+} }
