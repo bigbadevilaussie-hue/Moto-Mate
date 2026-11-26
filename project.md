@@ -1,5 +1,12 @@
 # Moto-Mate MkII — Project Specification and Lessons Learned
 
+## Owner rule: Moto-Mate governs OSA
+
+**OWNER RULE — 2026-11-26: Moto-Mate dictates how OSA works from now on.** The owner explicitly authorises the technical lead to fix and rework OSA to meet Moto-Mate's requirements, rather than constrain the new firmware to OSA's historical architecture. This supersedes the earlier requirement for separate scope approval for OSA engineering changes. It does not authorise arbitrary changes to Bike-Mate firmware, protected ESP32 radio sequences, or other device firmware. Preserve the battery-first prime directive, the ESP32's autonomy, and OSA's role as sole BLE broker. Preserve working services and user-facing behaviour for Bike-Mate, Fan-Mate and Audio-Mate, especially Alexa telling the owner to check the bike, existing alerts, storage and OTA workflows. Compatibility is a behavioural requirement, not a mandate to retain flawed internals. Do not silently remove features or change alert routing. No automatic deployment: use small testable changes, regression tests and an owner-controlled cutover with rollback.
+
+The older direct-port/reuse wording below is historical and superseded by operating-design.md and aihandover.md.
+
+
 Updated 2026-11-25. Firmware V1.00, pre-port baseline. This document distils Bike-Mate's engineering experience for Moto-Mate. It is not a claim that the port is implemented or tested. Read [aihandover.md](aihandover.md) and [README.md](README.md) for owner direction and workflow.
 
 ## 0. PRIME DIRECTIVE — SAVE THE BATTERY AT ALL COSTS
