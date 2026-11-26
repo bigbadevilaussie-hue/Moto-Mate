@@ -7,3 +7,8 @@ void hardwareBegin(mm::TimeUs now);
 void hardwareReportBoot();
 void hardwarePoll(mm::TimeUs now);
 String hardwareStatus();
+
+// Explicit bench test only; caller must have never started the radios.
+bool hardwareButtonReleased(mm::TimeUs now);
+bool hardwareArmBenchSleep();
+void hardwareCancelBenchSleep();

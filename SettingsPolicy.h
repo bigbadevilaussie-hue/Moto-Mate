@@ -23,7 +23,8 @@ inline bool decode(uint32_t word, Settings& s) {
 // Field must never inherit bench overrides. Capability gates are false
 // until the relevant runtime and recovery paths have been implemented.
 constexpr bool FIELD_READY=false;
-constexpr bool BENCH_SLEEP_READY=false;
+// One-shot commissioning on next reset; request consumed before sleep.
+constexpr bool BENCH_SLEEP_READY=true;
 inline bool fieldActive(const Settings& s) { return FIELD_READY && s.profile==Profile::Field; }
 inline bool benchSleepActive(const Settings& s) {
   return BENCH_SLEEP_READY && s.profile==Profile::Bench && s.benchSleep;

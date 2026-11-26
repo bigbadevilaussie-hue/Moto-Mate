@@ -8,7 +8,8 @@ int main() {
     mm::Settings s;
     assert(mm::decode(mm::SETTINGS_V1|flags,s));
     assert(mm::encode(s)==(mm::SETTINGS_V1|flags));
-    assert(!mm::fieldActive(s) && !mm::benchSleepActive(s));
+    assert(!mm::fieldActive(s));
+    assert(mm::benchSleepActive(s)==((flags&1)==0 && (flags&2)!=0));
     assert(mm::verboseActive(s)==((flags&1)==0 && (flags&4)!=0));
   }
   mm::Settings s;

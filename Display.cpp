@@ -105,7 +105,7 @@ void stopIntro() {
 
 } // namespace
 
-void displayBegin() {
+void displayBegin(bool animate) {
   // Hardware owns BL. Do not drive GPIO4 high until its load is qualified.
   if (!tft.init()) {
     Serial.println("[TFT] FAIL: driver init");
@@ -121,7 +121,7 @@ void displayBegin() {
   drawn = false;
   tft.fillScreen(uint16_t(0));
   intro.setColorDepth(16);
-  animating = intro.createSprite(160,128) != nullptr;
+  animating = animate && intro.createSprite(160,128) != nullptr;
   if (animating) {
     introMode = SplashMode::Initialising;
     if (!drawSplash(intro, introMode)) stopIntro();
@@ -162,4 +162,51 @@ void displayPoll(SplashMode mode) {
   bool ok = drawSplash(tft, mode);
   Serial.printf("[SPLASH] %s mode=%u (visual confirmation required)\n",
                 ok ? "SENT" : "FAIL", unsigned(mode));
+}
+
+bool displaySleepCountdown(unsigned seconds) {
+  if (!ready) return false;
+  stopIntro();
+  drawn=false;
+  static unsigned previous=999;
+  if (previous==seconds) return true;
+  const uint16_t black=0x0000, yellow=0xFEC0, shade=0xD480, white=0xFFFF, blue=0x65FF;
+  if (previous==999 || seconds>previous) {
+    tft.fillScreen(black);
+    tft.fillCircle(70,39,31,shade);
+    tft.fillCircle(70,37,29,yellow);
+    tft.drawLine(51,33,58,37,black);
+    tft.drawLine(58,37,65,33,black);
+    tft.drawLine(75,33,82,37,black);
+    tft.drawLine(82,37,89,33,black);
+    tft.fillCircle(70,51,7,black);
+    tft.setTextDatum(lgfx::textdatum_t::top_left);
+    tft.setTextColor(blue);
+    tft.setTextSize(1);
+    tft.setFont(&lgfx::fonts::FreeSansBold9pt7b);
+    tft.drawString("z",105,20);
+    tft.drawString("Z",119,9);
+    tft.setTextColor(white);
+    tft.drawString("SLEEPING",(160-tft.textWidth("SLEEPING"))/2,74);
+  }
+  tft.fillRect(0,95,160,33,black);
+  char label[20];
+  snprintf(label,sizeof(label),"IN %u s",seconds);
+  tft.setTextColor(white);
+  tft.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  tft.drawString(label,(160-tft.textWidth(label))/2,95);
+  previous=seconds;
+  return true;
+}
+void displaySleepPanel() {
+  if (!ready) return;
+  stopIntro();
+  tft.fillScreen(uint16_t(0));
+  tft.sleep();
+  drawn=false;
+}
+void displayResumePanel() {
+  if (!ready) return;
+  tft.wakeup();
+  drawn=false;
 }

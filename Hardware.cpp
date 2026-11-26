@@ -33,7 +33,7 @@ void hardwareBegin(mm::TimeUs now) {
   bootCause=esp_sleep_get_wakeup_cause();
   const auto wakePin=static_cast<gpio_num_t>(WAKE_BTN_PIN);
   wakePinRtc=rtc_gpio_is_valid_gpio(wakePin);
-  if (wakePinRtc && (bootCause==ESP_SLEEP_WAKEUP_EXT0 || bootCause==ESP_SLEEP_WAKEUP_EXT1))
+  if (wakePinRtc)
     wakePinRtc=rtc_gpio_deinit(wakePin)==ESP_OK;
   pinMode(WAKE_BTN_PIN,INPUT_PULLUP);
   button.begin(mm::TimeUs(esp_timer_get_time()),digitalRead(WAKE_BTN_PIN)==LOW);
@@ -80,4 +80,36 @@ String hardwareStatus() {
     (unsigned long long)button.lastHoldUs(),button.releasedForWake(now)?"true":"false");
   status+=wake;
   return status;
+}
+
+bool hardwareButtonReleased(mm::TimeUs now) {
+  return digitalRead(WAKE_BTN_PIN)==HIGH && button.releasedForWake(now);
+}
+
+void hardwareCancelBenchSleep() {
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  rtc_gpio_deinit(static_cast<gpio_num_t>(WAKE_BTN_PIN));
+  pinMode(WAKE_BTN_PIN,INPUT_PULLUP);
+  gpio_deep_sleep_hold_dis();
+  for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN})
+    if (!off(p)) safeOutputs=false;
+}
+
+bool hardwareArmBenchSleep() {
+  const auto pin=static_cast<gpio_num_t>(WAKE_BTN_PIN);
+  if (!safeOutputs || !wakePinRtc || !hardwareButtonReleased(esp_timer_get_time())) return false;
+  esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
+  bool ok=esp_sleep_enable_timer_wakeup(mm::PARKED_SLEEP_US)==ESP_OK
+      && esp_sleep_enable_ext0_wakeup(pin,0)==ESP_OK
+      && rtc_gpio_pullup_en(pin)==ESP_OK
+      && rtc_gpio_pulldown_dis(pin)==ESP_OK;
+  if (ok) {
+    for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN}) {
+      if (gpio_set_level(static_cast<gpio_num_t>(p),0)!=ESP_OK ||
+          gpio_hold_en(static_cast<gpio_num_t>(p))!=ESP_OK) ok=false;
+    }
+  }
+  if (!ok) { hardwareCancelBenchSleep(); return false; }
+  gpio_deep_sleep_hold_en();
+  return true;
 }
