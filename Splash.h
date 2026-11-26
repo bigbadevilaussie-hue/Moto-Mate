@@ -11,7 +11,8 @@ enum class SplashMode : uint8_t {
   LogUpload,
   FirmwareUpdate,
   RiderReady,
-  BatteryCheck
+  BatteryCheck,
+  BenchAwake
 };
 
 // Returns false if dimensions or text fit checks fail.

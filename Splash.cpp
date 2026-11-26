@@ -25,6 +25,7 @@ const char* modeLabel(SplashMode mode) {
     case SplashMode::FirmwareUpdate: return "FIRMWARE UPDATE";
     case SplashMode::RiderReady: return "RIDER READY";
     case SplashMode::BatteryCheck: return "BATTERY CHECK";
+    case SplashMode::BenchAwake: return "BENCH MODE";
   }
   return "UNKNOWN MODE";
 }

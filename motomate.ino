@@ -61,6 +61,11 @@ void countdownPoll() {
     esp_deep_sleep_start();
     return;
   }
+  // Normal splash until the final five seconds of the existing awake budget.
+  if (countdownEnd-now>5000000ULL) {
+    displayPoll(SplashMode::BenchAwake);
+    return;
+  }
   const unsigned seconds=unsigned((countdownEnd-now+999999ULL)/1000000ULL);
   if (seconds!=shown) {
     shown=seconds;
