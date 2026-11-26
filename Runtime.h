@@ -19,6 +19,24 @@ private:
   TimeUs last_ = 0;
 };
 
+// Input sampling is independent of gesture/action policy; no delays.
+class DebouncedInput {
+public:
+  explicit DebouncedInput(TimeUs debounceUs): debounce_(debounceUs) {}
+  void begin(TimeUs now,bool pressed) { stable_=candidate_=pressed; changed_=now; edges_=0; }
+  void update(TimeUs now,bool pressed) {
+    if (pressed!=candidate_) { candidate_=pressed; changed_=now; }
+    if (candidate_!=stable_ && now-changed_>=debounce_) { stable_=candidate_; ++edges_; }
+  }
+  bool value() const { return stable_; }
+  uint32_t edges() const { return edges_; }
+private:
+  const TimeUs debounce_;
+  TimeUs changed_=0;
+  bool stable_=false,candidate_=false;
+  uint32_t edges_=0;
+};
+
 struct LoopMetrics {
   TimeUs maxGapUs = 0;
   TimeUs maxServiceUs = 0;

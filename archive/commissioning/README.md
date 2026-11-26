@@ -1,0 +1,1 @@
+Historical test sources, excluded from Arduino sketch build (outside root and src). Exact runnable snapshots are Git tags/commits V1.03–1.10, not this directory. These files preserve evidence, not active application services. Original V1.10 sketch is commit 16bf882. No protected donor firmware changed.

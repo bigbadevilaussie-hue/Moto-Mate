@@ -2,6 +2,12 @@
 #include <cassert>
 #include <cstdio>
 int main() {
+  mm::DebouncedInput b(30);
+  b.begin(100,false); b.update(101,true); b.update(115,false); b.update(120,true);
+  b.update(149,true); assert(!b.value() && b.edges()==0);
+  b.update(150,true); assert(b.value() && b.edges()==1);
+  b.update(200,false); b.update(230,false); assert(!b.value() && b.edges()==2);
+  b.begin(300,true); assert(b.value() && b.edges()==0);
   mm::Periodic p(10);
   p.start(100);
   assert(!p.due(109)); assert(p.due(110));

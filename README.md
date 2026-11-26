@@ -254,3 +254,6 @@ See [OTA commissioning](ota-commissioning.md). First USB flash then wireless slo
 
 
 **V1.10 OTA commissioning owner PASS:** app0 -> app1, distinct boot IDs, same version and Wi-Fi restored. See [ota-commissioning.md](ota-commissioning.md). Buck-powered operation and interrupted-update recovery pending.
+
+
+**V1.11 application foundation:** commissioning archived; OTA/Wi-Fi services extracted; real safe idle GPIO, button observation and ADC pin measurement. See [application-foundation.md](application-foundation.md). Compile, OTA and physical checks pending. No field operation.
