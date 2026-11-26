@@ -1,8 +1,5 @@
-"""Moto-Mate GUI launcher."""
-import customtkinter as ctk
-from motomate.app import App
+"""Default Qt6 dashboard; legacy Tk source remains in the package."""
+from motomate.qt_app import main
 
 if __name__ == "__main__":
-    root = ctk.CTk()
-    App(root)
-    root.mainloop()
+    raise SystemExit(main())
