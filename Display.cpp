@@ -40,27 +40,70 @@ public:
 };
 
 MotoDisplay tft;
+lgfx::LGFX_Sprite intro(&tft);
 bool ready = false;
 bool drawn = false;
+bool animating = false;
 SplashMode lastMode = SplashMode::Initialising;
-uint8_t stage = 0;
-uint32_t since = 0;
-constexpr uint32_t TEST_MS = 1200;
-constexpr uint16_t colors[] = {0xF800, 0x07E0, 0x001F};
-const char* const names[] = {"RED", "GREEN", "BLUE"};
+SplashMode introMode = SplashMode::Initialising;
+uint32_t introStart = 0;
+uint32_t lastFrame = 0;
+constexpr uint32_t INTRO_MS = 1500;
+constexpr uint32_t FRAME_MS = 65;
 
-void colorTest(uint8_t index) {
-  tft.fillScreen(colors[index]);
-  tft.drawRect(0, 0, 160, 128, uint16_t(0xFFFF));
-  tft.setFont(&lgfx::fonts::Font0);
-  tft.setTextSize(2);
-  tft.setTextDatum(lgfx::textdatum_t::top_left);
-  tft.setTextColor(uint16_t(0xFFFF), uint16_t(0x0000));
-  tft.drawString(names[index], (160-tft.textWidth(names[index]))/2, 56);
-  since = millis();
-  Serial.printf("[TFT] SENT %s; inspect colour and complete white border\n", names[index]);
+uint16_t fadePixel(uint16_t p, unsigned level) {
+  const unsigned r = ((p >> 11) * level + 127) / 255;
+  const unsigned g = (((p >> 5) & 63) * level + 127) / 255;
+  const unsigned b = ((p & 31) * level + 127) / 255;
+  return uint16_t((r << 11) | (g << 5) | b);
 }
+
+void introFrame(uint32_t elapsed) {
+  // Fade from black; a diagonal red energy sweep travels across the artwork.
+  // Explicit RGB565 type avoids dependence on the panel byte-swap setting.
+  const unsigned level = elapsed >= 1050 ? 255 : elapsed * 255 / 1050;
+  const int sweep = int(elapsed * 220 / INTRO_MS) - 40;
+  lgfx::rgb565_t strip[160 * 4];
+  tft.startWrite();
+  for (int y = 0; y < 128; y += 4) {
+    for (int j = 0; j < 4; ++j) {
+      for (int x = 0; x < 160; ++x) {
+        uint16_t p = fadePixel(intro.readPixel(x, y+j), level);
+        const int distance = abs(x + (y+j)/3 - sweep);
+        // Restrict the sweep to the logo area, leaving dynamic text clean.
+        if (y+j < 43 && distance < 12 && elapsed < 1200) {
+          const unsigned boost = (12-distance) * (1200-elapsed) / 600;
+          const unsigned red = (p >> 11) + boost;
+          p = uint16_t((p & 0x07FF) | ((red > 31 ? 31 : red) << 11));
+        }
+        strip[j*160+x] = p;
+      }
+    }
+    tft.pushImage(0, y, 160, 4, strip);
+  }
+  // Deterministic tiny sparks trail the sweep, then disappear completely.
+  if (elapsed < 1200) {
+    for (int i = 0; i < 9; ++i) {
+      const int x = sweep - 6 - (i*13)%32;
+      const int y = 5 + (i*17 + int(elapsed/30))%33;
+      if (x > 1 && x < 158) {
+        tft.drawPixel(x, y, uint16_t(0xFBE0));
+        tft.drawFastHLine(x-1, y, 3, uint16_t(0xF800));
+        tft.drawPixel(x, y, uint16_t(0xFFFF));
+      }
+    }
+  }
+  tft.endWrite();
 }
+
+void stopIntro() {
+  if (animating) {
+    intro.deleteSprite();
+    animating = false;
+  }
+}
+
+} // namespace
 
 void displayBegin() {
   // Hardware owns BL. Do not drive GPIO4 high until its load is qualified.
@@ -75,18 +118,43 @@ void displayBegin() {
     return;
   }
   ready = true;
-  stage = 0;
   drawn = false;
-  Serial.println("[TFT] INIT OK 160x128 RGB565; write-only, visual confirmation required; BL disabled");
-  colorTest(stage);
+  tft.fillScreen(uint16_t(0));
+  intro.setColorDepth(16);
+  animating = intro.createSprite(160,128) != nullptr;
+  if (animating) {
+    introMode = SplashMode::Initialising;
+    if (!drawSplash(intro, introMode)) stopIntro();
+  }
+  introStart = millis();
+  lastFrame = introStart - FRAME_MS;
+  Serial.printf("[TFT] INIT OK 160x128 RGB565; intro=%s; BL disabled\n",
+                animating ? "enabled" : "fallback");
 }
 
 void displayPoll(SplashMode mode) {
   if (!ready) return;
-  if (stage < 3) {
-    if (uint32_t(millis()-since) < TEST_MS) return;
-    ++stage;
-    if (stage < 3) { colorTest(stage); return; }
+  if (animating) {
+    const uint32_t now = millis();
+    const uint32_t elapsed = now - introStart;
+    if (elapsed < INTRO_MS) {
+      if (now-lastFrame < FRAME_MS) return;
+      lastFrame = now;
+      if (introMode != mode) {
+        introMode = mode;
+        if (!drawSplash(intro, mode)) stopIntro();
+      }
+      if (animating) { introFrame(elapsed); return; }
+    }
+    if (animating && introMode == mode) {
+      intro.pushSprite(0,0);
+      drawn = true;
+      lastMode = mode;
+      stopIntro();
+      Serial.println("[SPLASH] intro complete; temporary sprite released");
+      return;
+    }
+    stopIntro();
   }
   if (drawn && mode == lastMode) return;
   drawn = true;

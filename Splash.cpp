@@ -47,6 +47,40 @@ bool centered(lgfx::LGFXBase& t, const char* text, int top, int bottom,
   t.drawString(text, (160-w)/2, top+(bottom-top-h)/2);
   return true;
 }
+// Render the main heading at 2x resolution then average four coverage
+// samples into each physical pixel. The central region has a black background.
+bool smoothMode(lgfx::LGFXBase& t, const char* label) {
+  constexpr int W = 160, H = 33, TOP = 48;
+  lgfx::LGFX_Sprite mask;
+  mask.setColorDepth(16);
+  if (!mask.createSprite(W*2,H*2)) return false;
+  mask.fillScreen(BLACK);
+  mask.setTextDatum(lgfx::textdatum_t::top_left);
+  mask.setTextColor(WHITE);
+  mask.setTextSize(1);
+  mask.setFont(&lgfx::fonts::FreeSansBold18pt7b);
+  if (mask.textWidth(label) > 296 || mask.fontHeight() > H*2)
+    mask.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  const int w = mask.textWidth(label), h = mask.fontHeight();
+  if (w > 296 || h > H*2) { mask.deleteSprite(); return false; }
+  mask.drawString(label, (W*2-w)/2, (H*2-h)/2);
+  lgfx::rgb565_t row[W];
+  t.startWrite();
+  for (int y = 0; y < H; ++y) {
+    for (int x = 0; x < W; ++x) {
+      unsigned sum = 0;
+      for (int j = 0; j < 2; ++j)
+        for (int i = 0; i < 2; ++i)
+          sum += mask.readPixel(x*2+i,y*2+j) != BLACK;
+      const uint16_t shade = uint16_t(((sum*31/4)<<11) | ((sum*63/4)<<5) | (sum*31/4));
+      row[x] = shade;
+    }
+    t.pushImage(0,TOP+y,W,1,row);
+  }
+  t.endWrite();
+  mask.deleteSprite();
+  return true;
+}
 } // namespace
 
 bool drawSplash(lgfx::LGFXBase& t, SplashMode mode, const char* detail,
@@ -67,7 +101,8 @@ bool drawSplash(lgfx::LGFXBase& t, SplashMode mode, const char* detail,
     ok &= centered(t, v, 61, 91, 148, &lgfx::fonts::FreeSansBold12pt7b, &lgfx::fonts::FreeSansBold9pt7b);
     ok &= centered(t, temp, 91, 110, 148, &lgfx::fonts::FreeSansBold9pt7b);
   } else {
-    ok &= centered(t, modeLabel(mode), 48, 81, 148, &lgfx::fonts::FreeSansBold9pt7b);
+    if (!smoothMode(t, modeLabel(mode)))
+      ok &= centered(t, modeLabel(mode), 48, 81, 148, &lgfx::fonts::FreeSansBold9pt7b);
     if (detail && *detail) ok &= centered(t, detail, 81, 109, 148, &lgfx::fonts::DejaVu12, &lgfx::fonts::DejaVu9);
   }
   ok &= centered(t, "VER " MOTO_MATE_VERSION, 110, 128, 68, &lgfx::fonts::DejaVu9);
