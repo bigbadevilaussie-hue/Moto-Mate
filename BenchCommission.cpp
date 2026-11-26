@@ -67,6 +67,7 @@ uint32_t stageAt = 0;
 uint32_t connectAt = 0;
 unsigned attempt = 0;
 bool wifiOK = false, clockOK = false, offOK = false;
+bool keepConnected = false;
 void stage(Radio s) { radio = s; stageAt = millis(); }
 bool elapsed(uint32_t ms) { return uint32_t(millis() - stageAt) >= ms; }
 bool validEpoch(time_t t) { return t >= 1700000000LL && t <= 1893456000LL; }
@@ -233,7 +234,8 @@ bool commissionStorage() {
   return ok;
 }
 
-void commissionRadioBegin() {
+void commissionRadioBegin(bool keepWifi) {
+  keepConnected = keepWifi;
   Serial.println("\n--- 04 / WIFI -----------------------------------------");
   wifiOK = clockOK = offOK = false;
   attempt = 0;
@@ -307,8 +309,11 @@ bool commissionRadioPoll() {
         Serial.printf("[WIFI] IP=%s gateway=%s MAC=%s RSSI=%d dBm\n",
             WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str(),
             WiFi.macAddress().c_str(), int(WiFi.RSSI()));
-        Serial.println("\n--- 05 / CLOCK ----------------------------------------");
-        stage(Radio::ClockLan);
+        if (keepConnected) stage(Radio::Done);
+        else {
+          Serial.println("\n--- 05 / CLOCK ----------------------------------------");
+          stage(Radio::ClockLan);
+        }
       } else if (elapsed(15000)) failAttempt();
       break;
     case Radio::Retry:
@@ -341,6 +346,7 @@ bool commissionRadioPoll() {
   return radio == Radio::Done;
 }
 bool commissionRadioPassed() { return wifiOK && clockOK && offOK; }
+bool commissionWifiConnected() { return wifiOK && WiFi.status() == WL_CONNECTED && uint32_t(WiFi.localIP()) != 0; }
 void commissionRadioCancel() {
   if (radio != Radio::Idle && radio != Radio::Done) {
     offOK = radioOff();

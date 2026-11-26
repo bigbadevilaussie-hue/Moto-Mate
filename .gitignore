@@ -4,3 +4,5 @@ build/
 *.elf
 *.map
 Config.local.h
+
+Ota.local.h

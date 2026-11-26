@@ -188,3 +188,6 @@ Moto-Mate V1.08 (52b2cec), OSA V1.41 (e509b36): Arduino core 2.0.17 compile PASS
 
 
 V1.09 owner-requested 30/30 USB power bench is active in the sketch. Radios off, no peripheral initialisation, repeat timer deep sleep. See power-bench.md. V1.08 B2 verified baseline remains in history. No OSA change. Compile/upload pending.
+
+
+V1.10 OTA bench implemented, compile and actual wireless update pending. See ota-commissioning.md; preserve USB recovery until verified. V1.09 30/30 bench and OSA V1.42 passive monitoring verified by owner; current pending.

@@ -247,3 +247,7 @@ See [B2 sleep test](sleep-commissioning.md). Dedicated USB-only build, real time
 ## V1.09 USB power bench
 
 [30s awake / 30s deep sleep](power-bench.md), repeating, radios off. Compile and measurements pending. Not field mode.
+
+## V1.10 OTA maintenance bench
+
+See [OTA commissioning](ota-commissioning.md). First USB flash then wireless slot-switch validation; local key setup required. No production sleep.
