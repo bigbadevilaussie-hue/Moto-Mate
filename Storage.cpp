@@ -12,6 +12,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <string.h>
+#include <mbedtls/sha256.h>
 
 namespace {
 const char* fsState="not_mounted";
@@ -110,7 +111,7 @@ bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& r
   if(strcmp(logIdState,"valid") || logId.generation!=generation ||
      usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
   mm::log::Header h={};
-  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=27;
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=28;
   if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
   h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
@@ -146,6 +147,47 @@ bool storageRecoverTestLog(uint64_t generation,uint64_t seq,String& result) {
     ok?"true":"false",(unsigned long long)seq,path,unsigned(scan.bytes),unsigned(scan.records),
     ok?mm::log::scanName(scan.classification):"failed_preserved");
   result=b; return ok;
+}
+bool storageOpenBenchTransfer(uint64_t generation,uint64_t seq,fs::File& file,String& descriptor) {
+  if(!mounted || file) return false;
+  refreshIdentity();
+  if(strcmp(logIdState,"valid") || logId.generation!=generation || !seq || seq>logId.reservedThrough) return false;
+  mm::log::Scan scan={};
+  if(!mm::log::inspectSealedMonitor(generation,seq,scan)) return false;
+  char path[mm::log::PATH_BYTES];
+  if(!mm::log::filename(mm::log::Kind::Monitor,generation,seq,mm::log::Suffix::Bin,path)) return false;
+  fs::File f=LittleFS.open(path,"r");
+  if(!f || f.size()!=scan.bytes) return false;
+  uint8_t header[mm::log::HEADER_BYTES],mac[6]={};
+  if(f.read(header,sizeof(header))!=sizeof(header) ||
+     !mm::log::validHeader(header,sizeof(header)) ||
+     !mm::log::filenameMatchesHeader(path,header,sizeof(header)) ||
+     !(header[10]&1u) || esp_efuse_mac_get_default(mac)!=ESP_OK ||
+     memcmp(mac,header+12,6) || !f.seek(0)) {
+    f.close(); return false;
+  }
+  uint8_t chunk[512],digest[32];
+  mbedtls_sha256_context ctx;
+  mbedtls_sha256_init(&ctx);
+  bool ok=mbedtls_sha256_starts_ret(&ctx,0)==0;
+  size_t remaining=scan.bytes;
+  while(ok && remaining) {
+    const size_t n=remaining<sizeof(chunk)?remaining:sizeof(chunk);
+    ok=f.read(chunk,n)==n && mbedtls_sha256_update_ret(&ctx,chunk,n)==0;
+    remaining-=n;
+  }
+  ok=ok && mbedtls_sha256_finish_ret(&ctx,digest)==0;
+  mbedtls_sha256_free(&ctx);
+  if(!ok || !f.seek(0)) { f.close(); return false; }
+  char hash[65];
+  for(unsigned i=0;i<sizeof(digest);++i) snprintf(hash+i*2,3,"%02x",unsigned(digest[i]));
+  char b[512];
+  const int n=snprintf(b,sizeof(b),"{\"device_mac\":\"%02x%02x%02x%02x%02x%02x\",\"file_id\":\"%016llx%016llx\",\"basename\":\"%s\",\"encoding\":\"raw\",\"transmitted_bytes\":%u,\"transmitted_sha256\":\"%s\",\"canonical_raw_bytes\":%u,\"canonical_raw_sha256\":\"%s\"}",
+    unsigned(mac[0]),unsigned(mac[1]),unsigned(mac[2]),unsigned(mac[3]),unsigned(mac[4]),unsigned(mac[5]),
+    (unsigned long long)generation,(unsigned long long)seq,path+1,unsigned(scan.bytes),hash,unsigned(scan.bytes),hash);
+  if(n<=0 || size_t(n)>=sizeof(b)) { f.close(); return false; }
+  descriptor=b; file=f;
+  return bool(file);
 }
 String storageJson() {
   char b[380];

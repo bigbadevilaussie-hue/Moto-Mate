@@ -9,6 +9,7 @@ const char* scanName(ScanClass);
 // Pure classification used by native tests; bytes are exact on-disk image.
 Scan inspectBytes(const char* path,const uint8_t* bytes,size_t size);
 // Explicit commissioning operations; paths are generated internally.
+bool inspectSealedMonitor(uint64_t generation,uint64_t seq,Scan& result);
 bool createOpen(const Header&);
 bool appendOne(const Header&,size_t expectedRecords,const uint8_t record[RECORD_BYTES]);
 bool recoverOpen(Kind,uint64_t generation,uint64_t seq,Scan& result,Suffix& finalSuffix);

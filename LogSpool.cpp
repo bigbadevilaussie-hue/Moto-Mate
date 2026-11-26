@@ -70,6 +70,19 @@ Scan inspectFile(const char* relative,const char* full) {
   return s;
 }
 }
+bool inspectSealedMonitor(uint64_t g,uint64_t seq,Scan& result) {
+  char rel[PATH_BYTES],full[FULL_BYTES];
+  if(!filename(Kind::Monitor,g,seq,Suffix::Bin,rel) || !fullPath(rel,full)) return false;
+  // Refuse any ambiguous sibling, including an active or compressed copy.
+  for(unsigned i=0;i<6;++i) {
+    if(i==static_cast<unsigned>(Suffix::Bin)) continue;
+    char other[PATH_BYTES],otherFull[FULL_BYTES];
+    if(!filename(Kind::Monitor,g,seq,static_cast<Suffix>(i),other) ||
+       !fullPath(other,otherFull) || !absent(otherFull)) return false;
+  }
+  result=inspectFile(rel,full);
+  return result.classification==ScanClass::Complete && result.bytes<=MAX_RAW_BYTES;
+}
 bool createOpen(const Header& h) {
   uint8_t b[HEADER_BYTES]; char rel[PATH_BYTES],full[FULL_BYTES];
   const Kind k=static_cast<Kind>(h.kind);

@@ -288,6 +288,29 @@ void testLogRecover() {
   const bool ok=storageRecoverTestLog(generation,seq,result);
   server.send(ok?200:409,"application/json",result.length()?result:"{\"ok\":false}");
 }
+void getLogTransfer(bool data) {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0,seq=0;
+  if(server.args()!=2 || !parseGeneration(server.arg("generation"),generation) ||
+     !parseGeneration(server.arg("sequence"),seq)) {
+    server.send(400,"text/plain","expected generation and sequence"); return;
+  }
+  fs::File file;
+  String descriptor;
+  if(!storageOpenBenchTransfer(generation,seq,file,descriptor)) {
+    server.send(409,"text/plain","sealed BENCH file unavailable or invalid"); return;
+  }
+  if(!data) {
+    file.close();
+    server.send(200,"application/json",descriptor);
+    return;
+  }
+  const size_t expectedBytes=file.size();
+  const size_t sent=server.streamFile(file,"application/octet-stream");
+  file.close();
+  Serial.printf("[LOG] BENCH read seq=%016llx sent=%u expected=%u; retained\n",
+    (unsigned long long)seq,unsigned(sent),unsigned(expectedBytes));
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -301,6 +324,8 @@ void startServer() {
   server.on("/log/test-sequence",HTTP_POST,testLogSequence);
   server.on("/log/test-write",HTTP_POST,testLogWrite);
   server.on("/log/test-recover",HTTP_POST,testLogRecover);
+  server.on("/log/descriptor",HTTP_GET,[](){ getLogTransfer(false); });
+  server.on("/log/data",HTTP_GET,[](){ getLogTransfer(true); });
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());
