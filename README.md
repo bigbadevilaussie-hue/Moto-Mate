@@ -251,3 +251,6 @@ See [B2 sleep test](sleep-commissioning.md). Dedicated USB-only build, real time
 ## V1.10 OTA maintenance bench
 
 See [OTA commissioning](ota-commissioning.md). First USB flash then wireless slot-switch validation; local key setup required. No production sleep.
+
+
+**V1.10 OTA commissioning owner PASS:** app0 -> app1, distinct boot IDs, same version and Wi-Fi restored. See [ota-commissioning.md](ota-commissioning.md). Buck-powered operation and interrupted-update recovery pending.

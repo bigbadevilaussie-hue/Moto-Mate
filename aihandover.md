@@ -191,3 +191,6 @@ V1.09 owner-requested 30/30 USB power bench is active in the sketch. Radios off,
 
 
 V1.10 OTA bench implemented, compile and actual wireless update pending. See ota-commissioning.md; preserve USB recovery until verified. V1.09 30/30 bench and OSA V1.42 passive monitoring verified by owner; current pending.
+
+
+**V1.10 OTA commissioning owner PASS:** app0 -> app1, distinct boot IDs, same version and Wi-Fi restored. See [ota-commissioning.md](ota-commissioning.md). Buck-powered operation and interrupted-update recovery pending.
