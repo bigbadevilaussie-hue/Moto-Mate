@@ -349,11 +349,11 @@ def apply_arctic_theme(app: QApplication) -> str:
 MOTO_STYLE = """
 QFrame#card { background: #ffffff; border: 1px solid #cbddec; border-radius: 16px; }
 QFrame#sidebar { background: #e1f0fb; border: 1px solid #cbddec; border-radius: 16px; }
-QLabel#brand { font-size: 24px; font-weight: 800; color: #19334d; }
-QLabel#pageTitle { font-size: 27px; font-weight: 750; }
-QLabel#metric { font-size: 30px; font-weight: 750; color: #176aab; }
+QLabel#brand { font-size: 21px; font-weight: 800; color: #19334d; }
+QLabel#pageTitle { font-size: 24px; font-weight: 750; }
+QLabel#metric { font-size: 27px; font-weight: 750; color: #176aab; }
 QLabel#muted { color: #355670; font-size: 12px; }
 QLabel#section { font-size: 15px; font-weight: 750; }
-QPushButton#nav { text-align: left; padding: 12px; border-radius: 11px; }
+QPushButton#nav { text-align: left; padding: 9px; border-radius: 11px; }
 QPushButton#nav:checked { background: #d2e9fa; border: 1px solid #6aaddc; }
 """

@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QTimer, QUrl, Signal, QObject, QByteArray
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply, QNetworkProxy
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QFrame, QLabel,
     QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QStackedWidget,
-    QScrollArea, QDoubleSpinBox, QMessageBox, QPlainTextEdit)
+    QScrollArea, QDoubleSpinBox, QMessageBox, QPlainTextEdit, QSizeGrip)
 from .qt_theme import apply_arctic_theme
 from .qt_model import GUI_VERSION, ROUTES, COLLECT, validate, link_label, age_label, budget
 
@@ -79,7 +79,7 @@ def card(title, detail=""):
     frame = QFrame()
     frame.setObjectName("card")
     layout = QVBoxLayout(frame)
-    layout.setContentsMargins(18, 14, 18, 14)
+    layout.setContentsMargins(14, 10, 14, 10)
     layout.setSpacing(7)
     layout.addWidget(label(title, "section"))
     if detail:
@@ -101,8 +101,8 @@ class Dashboard(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"Moto-Mate • Arctic Edition • GUI {GUI_VERSION}")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.resize(1180, 780)
-        self.setMinimumSize(860, 620)
+        self.setMinimumSize(760, 500)
+        self.resize(940, 640)
         self.values = {}
         self.errors = {}
         self.post_pending = False
@@ -111,17 +111,21 @@ class Dashboard(QMainWindow):
         self.client.failed.connect(self.update_error)
         root = QWidget()
         self.setCentralWidget(root)
-        row = QHBoxLayout(root)
-        row.setContentsMargins(14, 12, 14, 14)
-        row.setSpacing(14)
+        outer = QVBoxLayout(root)
+        outer.setContentsMargins(10, 8, 10, 4)
+        outer.setSpacing(0)
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        outer.addLayout(row, 1)
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(205)
+        sidebar.setFixedWidth(180)
         nav = QVBoxLayout(sidebar)
-        nav.setContentsMargins(14, 20, 14, 16)
+        nav.setContentsMargins(10, 14, 10, 12)
+        nav.setSpacing(6)
         nav.addWidget(label("MOTO·MATE", "brand"))
         nav.addWidget(label("BATTERY FIRST  /  QT6", "muted"))
-        nav.addSpacing(18)
+        nav.addSpacing(10)
         self.pages = QStackedWidget()
         self.buttons = []
         for title, make in (("Overview", self.overview), ("Log collection", self.collection),
@@ -146,6 +150,9 @@ class Dashboard(QMainWindow):
         nav.addWidget(label("Local cache • no direct radio", "muted"))
         row.addWidget(sidebar)
         row.addWidget(self.pages, 1)
+        grip = QSizeGrip(root)
+        grip.setFixedSize(16, 16)
+        outer.addWidget(grip, 0, Qt.AlignmentFlag.AlignRight)
         self.select(0)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.client.poll)
@@ -161,7 +168,7 @@ class Dashboard(QMainWindow):
         page = QWidget()
         layout = QVBoxLayout(page)
         layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(14)
+        layout.setSpacing(10)
         layout.addWidget(label(title, "pageTitle"))
         layout.addWidget(label(sub, "muted"))
         return page, layout
@@ -338,5 +345,8 @@ def main():
     app.setApplicationName("Moto-Mate")
     apply_arctic_theme(app)
     window = Dashboard()
+    screen = window.screen().availableGeometry()
+    window.resize(min(window.width(), screen.width()), min(window.height(), screen.height()))
+    window.move(screen.center() - window.rect().center())
     window.show()
     return app.exec()
