@@ -1,5 +1,6 @@
 #include "MotoClock.h"
 #include "ClockPolicy.h"
+#include "Rtc8563.h"
 #include <esp_attr.h>
 #include <esp_timer.h>
 #include <nvs.h>
@@ -106,6 +107,7 @@ bool clockApplyHostUtc(uint64_t us) {
   retainedSyncUs=us;
   retainedMagic=CLOCK_MAGIC;
   checkpoint(us);
+  rtc8563Sync(clockUtcUs());
   Serial.printf("[CLOCK] host sync utc_us=%llu correction_known=%d correction_us=%lld checkpoint=%s\n",
     (unsigned long long)us,int(correctionKnown),(long long)lastCorrection,checkpointState);
   return true;
@@ -132,7 +134,10 @@ String clockJson() {
     snprintf(b,sizeof(b),"%lld",(long long)lastCorrection);
     out+=b;
   } else out+="null";
-  snprintf(b,sizeof(b),",\"monotonic_us\":%llu}",(unsigned long long)esp_timer_get_time());
+  snprintf(b,sizeof(b),",\"monotonic_us\":%llu",(unsigned long long)esp_timer_get_time());
   out+=b;
+  out+=",\"external_rtc\":";
+  out+=rtc8563Json(clockUtcUs());
+  out+="}";
   return out;
 }

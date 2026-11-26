@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define MOTO_MATE_VERSION "1.21"
+#define MOTO_MATE_VERSION "1.22"
 
 // Pins (ESP32-S3 Super Mini)
 #define VOLTAGE_PIN       1   // GPIO 1
@@ -11,6 +11,13 @@
 #define MOSFET_PIN        5   // GPIO 5
 #define I2C_SDA_PIN       6   // GPIO 6
 #define I2C_SCL_PIN       7   // GPIO 7
+
+// Optional PCF8563 RTC commissioning; no authority over system UTC yet.
+#define RTC_PCF8563_ENABLED 1
+#define RTC_PCF8563_ADDRESS 0x51
+#define RTC_WRITE_ON_HOST_SYNC 1
+#define I2C_BUS_HZ 100000UL
+#define I2C_TIMEOUT_MS 25
 #define TFT_RST_PIN       8   // GPIO 8
 #define TFT_DC_PIN        9   // GPIO 9
 #define TFT_CS_PIN       10   // GPIO 10

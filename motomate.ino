@@ -6,6 +6,7 @@
 #include "Settings.h"
 #include "Display.h"
 #include "MotoClock.h"
+#include "Rtc8563.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -84,6 +85,7 @@ void setup() {
   hardwareReportBoot();
   settingsBegin();
   clockBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
+  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) rtc8563Begin();
   diagnosticSchedule.start(nowUs());
   otaInit();
   const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
