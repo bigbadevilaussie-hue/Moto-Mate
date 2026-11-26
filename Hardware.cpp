@@ -1,6 +1,7 @@
 #include "Hardware.h"
 #include "Config.h"
 #include <driver/gpio.h>
+#include <initializer_list>
 #include <esp_timer.h>
 namespace {
 mm::Periodic adcSchedule(250000); // BENCH observation cadence, not crank capture
@@ -27,7 +28,6 @@ void hardwareBegin(mm::TimeUs now) {
   analogReadResolution(12);
   analogSetPinAttenuation(VOLTAGE_PIN,ADC_11db);
   adcSchedule.start(now);
-  Serial.printf("[GPIO] idle output configuration %s; physical loads unverified\n",safeOutputs?"PASS":"FAIL");
 }
 void hardwarePoll(mm::TimeUs now) {
   button.update(now,digitalRead(WAKE_BTN_PIN)==LOW);

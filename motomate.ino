@@ -25,7 +25,7 @@ void setup() {
 }
 
 void loop() {
-  if (otaRebootPending()) { otaPoll(); return; }
+  if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
   hardwarePoll(nowUs());
   switch (activity) {
     case Activity::Connecting:
