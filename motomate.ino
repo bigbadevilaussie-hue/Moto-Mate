@@ -23,6 +23,7 @@ void setup() {
   hardwareBegin(nowUs());
   Serial.begin(115200);
   Serial.printf("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION " wake=%d\n",int(cause));
+  hardwareReportBoot();
   settingsBegin();
   diagnosticSchedule.start(nowUs());
   otaInit();

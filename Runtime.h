@@ -30,17 +30,30 @@ private:
 class DebouncedInput {
 public:
   explicit DebouncedInput(TimeUs debounceUs): debounce_(debounceUs) {}
-  void begin(TimeUs now,bool pressed) { stable_=candidate_=pressed; changed_=now; edges_=0; }
+  void begin(TimeUs now,bool pressed) {
+    stable_=candidate_=bootPressed_=pressed; changed_=stableSince_=now;
+    edges_=0; lastHold_=0;
+  }
   void update(TimeUs now,bool pressed) {
     if (pressed!=candidate_) { candidate_=pressed; changed_=now; }
-    if (candidate_!=stable_ && now-changed_>=debounce_) { stable_=candidate_; ++edges_; }
+    if (candidate_!=stable_ && now-changed_>=debounce_) {
+      if (stable_) lastHold_=now-stableSince_;
+      stable_=candidate_; stableSince_=now; ++edges_;
+    }
   }
   bool value() const { return stable_; }
+  bool rawValue() const { return candidate_; }
+  bool bootPressed() const { return bootPressed_; }
   uint32_t edges() const { return edges_; }
+  TimeUs heldUs(TimeUs now) const { return stable_?now-stableSince_:0; }
+  TimeUs lastHoldUs() const { return lastHold_; }
+  bool releasedForWake(TimeUs now) const {
+    return !stable_ && !candidate_ && now-changed_>=debounce_;
+  }
 private:
   const TimeUs debounce_;
-  TimeUs changed_=0;
-  bool stable_=false,candidate_=false;
+  TimeUs changed_=0,stableSince_=0,lastHold_=0;
+  bool stable_=false,candidate_=false,bootPressed_=false;
   uint32_t edges_=0;
 };
 
