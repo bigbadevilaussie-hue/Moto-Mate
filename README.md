@@ -239,3 +239,7 @@ The original owner rules below are retained verbatim. Apply the following later 
 ## V1.07 BLE commissioning
 
 See [B1 commissioning](ble-commissioning.md). Compile and physical tests pending; V1.06 remains verified baseline.
+
+## V1.08 sleep commissioning
+
+See [B2 sleep test](sleep-commissioning.md). Dedicated USB-only build, real timer sleep, terminal deep sleep after three wakes. Compile and physical validation pending.
