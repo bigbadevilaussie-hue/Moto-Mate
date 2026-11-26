@@ -5,6 +5,7 @@
 #include "OtaService.h"
 #include "Settings.h"
 #include "Display.h"
+#include "MotoClock.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -82,6 +83,7 @@ void setup() {
   Serial.printf("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION " wake=%d\n",int(cause));
   hardwareReportBoot();
   settingsBegin();
+  clockBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
   diagnosticSchedule.start(nowUs());
   otaInit();
   const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;

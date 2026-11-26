@@ -2,6 +2,8 @@
 #include "OtaService.h"
 #include "Hardware.h"
 #include "Settings.h"
+#include "MotoClock.h"
+#include "ClockPolicy.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
@@ -71,6 +73,8 @@ void status() {
   body += hardwareStatus();
   body += ",\"settings\":";
   body += settingsJson();
+  body += ",\"clock\":";
+  body += clockJson();
   body += "}";
   server.send(200,"application/json",body);
 }
@@ -176,12 +180,40 @@ void setSettings() {
   server.send(200,"application/json",settingsJson());
 }
 
+void getClock() {
+  if (!authorised()) { server.send(403,"text/plain","unauthorised"); return; }
+  server.send(200,"application/json",clockJson());
+}
+void setClock() {
+  if (!authorised()) { server.send(403,"text/plain","unauthorised"); return; }
+  if (receiving || complete || rebootAt || Update.isRunning()) {
+    server.send(409,"text/plain","OTA transaction active"); return;
+  }
+  if (!settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) {
+    server.send(409,"text/plain","BENCH profile required"); return;
+  }
+  uint64_t utc=0;
+  if (server.args()!=1 || !server.hasArg("epoch_us")) {
+    server.send(400,"text/plain","expected epoch_us"); return;
+  }
+  const String value=server.arg("epoch_us");
+  if (!mm::parseUtcUs(value.c_str(),value.length(),utc)) {
+    server.send(400,"text/plain","invalid UTC epoch_us"); return;
+  }
+  if (!clockApplyHostUtc(utc)) {
+    server.send(500,"text/plain","clock apply/readback failed"); return;
+  }
+  server.send(200,"application/json",clockJson());
+}
+
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
   server.on("/settings",HTTP_GET,getSettings);
   server.on("/settings",HTTP_POST,setSettings);
   server.on("/ota",HTTP_POST,finishRequest,upload);
+  server.on("/clock",HTTP_GET,getClock);
+  server.on("/clock",HTTP_POST,setClock);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());
