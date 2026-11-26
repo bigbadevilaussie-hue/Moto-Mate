@@ -6,3 +6,8 @@ void storageBeginMaintenance();
 String storageJson();
 void resourcesObserveLoop(uint64_t now);
 String resourcesJson();
+
+// BENCH-only authenticated callers in the existing maintenance server.
+String storageLogIdentityJson();
+bool storageProvisionLogIdentity(uint64_t generation);
+bool storageAllocateTestSequence(uint64_t generation,uint64_t& seq);

@@ -214,6 +214,57 @@ void setClock() {
   server.send(200,"application/json",clockJson());
 }
 
+bool parseGeneration(const String& s,uint64_t& value) {
+  if(s.length()!=16) return false;
+  uint64_t n=0;
+  for(size_t i=0;i<s.length();++i) {
+    const char c=s[i];
+    if(c>='0' && c<='9') n=(n<<4)|uint64_t(c-'0');
+    else if(c>='a' && c<='f') n=(n<<4)|uint64_t(c-'a'+10);
+    else return false;
+  }
+  if(!n) return false;
+  value=n; return true;
+}
+bool logCommissionAllowed() {
+  if(!authorised()) { server.send(403,"text/plain","unauthorised"); return false; }
+  if(receiving || complete || rebootAt || Update.isRunning() ||
+      !settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) {
+    server.send(409,"text/plain","idle BENCH maintenance required"); return false;
+  }
+  return true;
+}
+void getLogIdentity() {
+  if(!logCommissionAllowed()) return;
+  server.send(200,"application/json",storageLogIdentityJson());
+}
+void setLogIdentity() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0;
+  if(server.args()!=1 || !server.hasArg("generation") ||
+      !parseGeneration(server.arg("generation"),generation)) {
+    server.send(400,"text/plain","expected nonzero 16 lowercase hex generation"); return;
+  }
+  if(!storageProvisionLogIdentity(generation)) {
+    server.send(409,"application/json",storageLogIdentityJson()); return;
+  }
+  server.send(200,"application/json",storageLogIdentityJson());
+}
+void testLogSequence() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0,seq=0;
+  if(server.args()!=1 || !server.hasArg("generation") ||
+      !parseGeneration(server.arg("generation"),generation)) {
+    server.send(400,"text/plain","expected generation"); return;
+  }
+  if(!storageAllocateTestSequence(generation,seq)) {
+    server.send(409,"application/json",storageLogIdentityJson()); return;
+  }
+  String body=storageLogIdentityJson();
+  body.remove(body.length()-1);
+  char b[48]; snprintf(b,sizeof(b),",\"allocated\":\"%016llx\"}",(unsigned long long)seq);
+  body+=b; server.send(200,"application/json",body);
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -222,6 +273,9 @@ void startServer() {
   server.on("/ota",HTTP_POST,finishRequest,upload);
   server.on("/clock",HTTP_GET,getClock);
   server.on("/clock",HTTP_POST,setClock);
+  server.on("/log/identity",HTTP_GET,getLogIdentity);
+  server.on("/log/identity",HTTP_POST,setLogIdentity);
+  server.on("/log/test-sequence",HTTP_POST,testLogSequence);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());

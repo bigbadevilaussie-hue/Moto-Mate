@@ -5,20 +5,42 @@
 #include <esp_heap_caps.h>
 #include <esp_timer.h>
 #include <nvs.h>
+#include <esp_system.h>
+#include <dirent.h>
+#include <errno.h>
+#include <string.h>
 
 namespace {
 const char* fsState="not_mounted";
 const char* logIdState="not_checked";
+mm::log::Identity logId={};
 bool attempted=false,mounted=false;
 size_t partitionBytes=0,totalBytes=0,usedBytes=0;
 uint64_t mountUs=0,statsUs=0,statsAt=0,lastLoop=0,maxLoopGap=0;
 uint32_t sketchBytes=0,flashBytes=0;
+void refreshIdentity() {
+  logId={};
+  logIdState=mm::log::identityStateName(mm::log::readIdentity(logId));
+}
+bool virginFilesystem() {
+  if(!mounted) return false;
+  // LittleFS.begin default VFS mount path on Arduino ESP32 2.0.17.
+  // Fail closed on any existing entry (including unknown files) or read error.
+  DIR* d=opendir("/littlefs");
+  if(!d) return false;
+  bool empty=true;
+  while(true) {
+    errno=0; dirent* e=readdir(d);
+    if(!e) { if(errno) empty=false; break; }
+    if(strcmp(e->d_name,".") && strcmp(e->d_name,"..")) { empty=false; break; }
+  }
+  return closedir(d)==0 && empty;
+}
 }
 void storageBeginMaintenance() {
   if (attempted) return;
   attempted=true;
-  mm::log::Identity id={};
-  logIdState=mm::log::identityStateName(mm::log::readIdentity(id));
+  refreshIdentity();
   Serial.printf("[LOG] schema=1 identity=%s writes=disabled\n",logIdState);
   const auto* p=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_DATA_SPIFFS,"spiffs");
   partitionBytes=p?p->size:0;
@@ -42,6 +64,36 @@ void storageBeginMaintenance() {
   Serial.printf("[MEMORY] flash=%lu image=%lu heap_free=%lu heap_min=%lu\n",
     (unsigned long)flashBytes,(unsigned long)sketchBytes,(unsigned long)ESP.getFreeHeap(),
     (unsigned long)ESP.getMinFreeHeap());
+}
+String storageLogIdentityJson() {
+  uint8_t mac[6]={};
+  const bool macOK=esp_efuse_mac_get_default(mac)==ESP_OK;
+  uint64_t next=0;
+  const bool valid=!strcmp(logIdState,"valid");
+  const bool cursor=valid && mm::log::currentCursor(logId.generation,logId.reservedThrough,next);
+  char b[360];
+  char generation[20]="null",high[20]="null",nextText[20]="null",macText[16]="null";
+  if(valid) {
+    snprintf(generation,sizeof(generation),"\"%016llx\"",(unsigned long long)logId.generation);
+    snprintf(high,sizeof(high),"\"%016llx\"",(unsigned long long)logId.reservedThrough);
+  }
+  if(cursor) snprintf(nextText,sizeof(nextText),"\"%016llx\"",(unsigned long long)next);
+  if(macOK) snprintf(macText,sizeof(macText),"\"%02x%02x%02x%02x%02x%02x\"",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
+  snprintf(b,sizeof(b),"{\"state\":\"%s\",\"device_mac\":%s,\"generation\":%s,\"reserved_through\":%s,\"next_reserved\":%s,\"filesystem_mounted\":%s,\"log_writes_enabled\":false}",
+    logIdState,macText,generation,high,nextText,mounted?"true":"false");
+  return String(b);
+}
+bool storageProvisionLogIdentity(uint64_t generation) {
+  if(!virginFilesystem()) return false;
+  const bool ok=mm::log::provisionVirginIdentity(generation);
+  refreshIdentity();
+  return ok;
+}
+bool storageAllocateTestSequence(uint64_t generation,uint64_t& seq) {
+  if(!mounted) return false;
+  const bool ok=mm::log::allocateSequence(generation,seq);
+  refreshIdentity();
+  return ok;
 }
 String storageJson() {
   char b[380];

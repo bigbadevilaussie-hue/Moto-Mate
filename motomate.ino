@@ -9,6 +9,7 @@
 #include "Rtc8563.h"
 #include "BenchSensors.h"
 #include "Storage.h"
+#include "LogIdentity.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -85,6 +86,8 @@ void countdownPoll() {
 
 void setup() {
   const auto cause=esp_sleep_get_wakeup_cause();
+  mm::log::identityBoot(esp_reset_reason()==ESP_RST_DEEPSLEEP &&
+      (cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1));
   hardwareBegin(nowUs());
   Serial.begin(115200);
   Serial.printf("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION " wake=%d\n",int(cause));
