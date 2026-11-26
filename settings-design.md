@@ -10,3 +10,6 @@ Host examples (after V1.12 installed):
     cd ~/Documents/Arduino/motomate && /opt/local/bin/python3.13 tools/moto_settings.py 192.168.8.136
     cd ~/Documents/Arduino/motomate && /opt/local/bin/python3.13 tools/moto_settings.py 192.168.8.136 --profile BENCH --verbose 1
 Native policy test tests/settings_test.cpp. Compile, physical NVS reboot/OTA persistence, API error cases and real hardware operation pending owner validation.
+
+
+Fixed parked timing is firmware policy, not configurable NVS: 300 s sleep, <=10 s awake, earlier sleep on completion. No timezone/peak/off-peak configuration. Existing capability gates remain false until power manager integration.

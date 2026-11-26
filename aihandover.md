@@ -134,7 +134,7 @@ Current Config.h map (ESP-side signal names):
 | 13 | Wake button |
 | 44 / 43 | GPS RX / TX (ESP perspective; UART1) |
 
-Existing documented constraints include 1 mA deep-sleep target, GPIO holds, MPU sleep on always-on 3.3 V, TFT sleep/backlight off, five-minute parked wake interval, LittleFS, GPS switched power, wake button modes, 4 AM log routine, and OTA via Wi-Fi maintenance mode. Preserve these as requirements to reconcile with the donor; do not blindly replace donor state-machine logic from a spec.
+Existing documented constraints include 1 mA deep-sleep target, GPIO holds, MPU sleep on always-on 3.3 V, TFT sleep/backlight off, five-minute parked wake interval, LittleFS, GPS switched power, wake button modes, elapsed 24-hour log routine, and OTA via Wi-Fi maintenance mode. Preserve these as requirements to reconcile with the donor; do not blindly replace donor state-machine logic from a spec.
 
 Known documentation inconsistencies to resolve against actual wiring and owner confirmation before affected work:
 - GPS direction/pin descriptions and whether ESP TX is connected; Config.h and the latest wiring table use ESP RX 44, ESP TX 43 with a 1k series resistor on TX, while older project/code requirement text conflicts.
@@ -200,3 +200,6 @@ V1.10 OTA bench implemented, compile and actual wireless update pending. See ota
 
 
 **V1.12:** Owner rule BENCH/FIELD is a persistent NVS profile, not an OTA variant. Settings foundation and authenticated read/write implemented; FIELD and bench sleep capability gates remain false pending real runtime. See [settings-design.md](settings-design.md). Compile and persistence verification pending.
+
+
+**AGREED owner rule (2026-11-26): fixed parked cadence, 300 seconds actual deep sleep and at most 10 seconds awake, returning sooner when work is complete. No peak/off-peak, time-of-day, timezone or DST-dependent wake intervals. UTC timestamps are evidence; elapsed-time scheduling is independent of civil time. Retire the legacy 04:00 wall-clock collection trigger; retain elevated 24-hour collection as elapsed-time due work, retry pending delivery on eligible wakes, mark completion only after verified acknowledgement. Ride, explicit maintenance, protection and safe transaction completion remain distinct exceptions. No adjustable parked cadence in NVS.**

@@ -5,6 +5,13 @@ namespace mm {
 // All times are monotonic microseconds since this boot, never wall-clock time.
 using TimeUs = uint64_t;
 
+// Fixed parked policy; no wall clock or NVS interval override.
+constexpr TimeUs PARKED_SLEEP_US = 300000000ULL;
+constexpr TimeUs PARKED_AWAKE_LIMIT_US = 10000000ULL;
+constexpr TimeUs COLLECTION_INTERVAL_US = 86400000000ULL;
+static_assert(PARKED_SLEEP_US == 300ULL*1000000ULL, "fixed sleep policy");
+static_assert(PARKED_AWAKE_LIMIT_US == 10ULL*1000000ULL, "fixed awake limit");
+
 class Periodic {
 public:
   explicit Periodic(TimeUs intervalUs) : interval_(intervalUs) {}

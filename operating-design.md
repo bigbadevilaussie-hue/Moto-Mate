@@ -64,6 +64,8 @@ These are design concepts, not the exact final enum/API or a claim that V1.04 im
 
 ## 5. BENCH, FIELD, sleep and fault policy
 
+**AGREED owner rule (2026-11-26): fixed parked cadence, 300 seconds actual deep sleep and at most 10 seconds awake, returning sooner when work is complete. No peak/off-peak, time-of-day, timezone or DST-dependent wake intervals. UTC timestamps are evidence; elapsed-time scheduling is independent of civil time. Retire the legacy 04:00 wall-clock collection trigger; retain elevated 24-hour collection as elapsed-time due work, retry pending delivery on eligible wakes, mark completion only after verified acknowledgement. Ride, explicit maintenance, protection and safe transaction completion remain distinct exceptions. No adjustable parked cadence in NVS.**
+
 **AGREED owner rule (2026-11-26): BENCH/FIELD is an NVS setting, never an OTA build variant.** Profile, bench sleep and verbose flags persist across application updates; effective activity and safety state remain runtime-owned. V1.12 implements the NVS contract; FIELD and bench sleep remain capability-gated pending runtime integration. See [settings-design.md](settings-design.md).
 
 **DESIGN:** BENCH and FIELD are profiles of the same production firmware. BENCH is not synonymous with maintenance or always awake. Independent bench sleep enable and verbose diagnostics allow real sleep, wake, RTC and current tests without abandoning the BENCH profile. FIELD enforces battery-preservation rules; cannot accidentally retain bench stay-awake override. BENCH on USB may explicitly remain awake for development. Do not assume USB bench can prove 12 V input current or crank brownout immunity.
@@ -86,7 +88,7 @@ Bench cadence, override limits, field deployment default and precise exceptions 
 | --- | --- |
 | Critical | PANIC, safety/fault handling and transaction safety |
 | High | OTA; preserve essential engine detection and ride capture |
-| Scheduled / elevated | Daily 24-hour file collection (existing 04:00 intent), pending delivery recovery |
+| Scheduled / elevated | Elapsed 24-hour file collection, pending delivery recovery |
 | Interactive | Local button requests, maintenance operations, settings, manual collection |
 | Low | Ordinary GUI/OSA live data polling and routine status requests |
 

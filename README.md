@@ -86,7 +86,7 @@ Source: [Config.h](Config.h). ESP-side signal names.
 
 ## Intended operation
 
-Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-ready and battery-check modes, LittleFS wake/ride logs, 4 AM gzip/upload routine, BLE telemetry and Wi-Fi-only maintenance/OTA. These are intended features, not claims that the Moto-Mate firmware already implements them. Reconcile older written timing requirements with actual donor code before changing state-machine behaviour.
+Parked five-minute wake interval, deep sleep between wakes, riding mode, rider-ready and battery-check modes, LittleFS wake/ride logs, elapsed 24-hour gzip/upload routine (no 04:00 trigger), BLE telemetry and Wi-Fi-only maintenance/OTA. These are intended features, not claims that the Moto-Mate firmware already implements them. Reconcile older written timing requirements with actual donor code before changing state-machine behaviour.
 
 ## Build status
 
@@ -260,3 +260,6 @@ See [OTA commissioning](ota-commissioning.md). First USB flash then wireless slo
 
 
 **V1.12:** Owner rule BENCH/FIELD is a persistent NVS profile, not an OTA variant. Settings foundation and authenticated read/write implemented; FIELD and bench sleep capability gates remain false pending real runtime. See [settings-design.md](settings-design.md). Compile and persistence verification pending.
+
+
+**AGREED owner rule (2026-11-26): fixed parked cadence, 300 seconds actual deep sleep and at most 10 seconds awake, returning sooner when work is complete. No peak/off-peak, time-of-day, timezone or DST-dependent wake intervals. UTC timestamps are evidence; elapsed-time scheduling is independent of civil time. Retire the legacy 04:00 wall-clock collection trigger; retain elevated 24-hour collection as elapsed-time due work, retry pending delivery on eligible wakes, mark completion only after verified acknowledgement. Ride, explicit maintenance, protection and safe transaction completion remain distinct exceptions. No adjustable parked cadence in NVS.**

@@ -2,6 +2,9 @@
 #include <cassert>
 #include <cstdio>
 int main() {
+  assert(mm::PARKED_SLEEP_US==300000000ULL);
+  assert(mm::PARKED_AWAKE_LIMIT_US==10000000ULL);
+  assert(mm::COLLECTION_INTERVAL_US==86400000000ULL);
   mm::DebouncedInput b(30);
   b.begin(100,false); b.update(101,true); b.update(115,false); b.update(120,true);
   b.update(149,true); assert(!b.value() && b.edges()==0);
