@@ -2,6 +2,7 @@
 #include <cassert>
 #include <cstdio>
 int main() {
+  assert(mm::BENCH_AWAKE_US==30000000ULL && mm::BENCH_SLEEP_US==30000000ULL);
   assert(mm::PARKED_SLEEP_US==300000000ULL);
   assert(mm::PARKED_AWAKE_LIMIT_US==10000000ULL);
   assert(mm::COLLECTION_INTERVAL_US==86400000000ULL);

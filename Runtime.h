@@ -6,6 +6,8 @@ namespace mm {
 using TimeUs = uint64_t;
 
 // Fixed parked policy; no wall clock or NVS interval override.
+constexpr TimeUs BENCH_AWAKE_US = 30000000ULL;
+constexpr TimeUs BENCH_SLEEP_US = 30000000ULL;
 constexpr TimeUs PARKED_SLEEP_US = 300000000ULL;
 constexpr TimeUs PARKED_AWAKE_LIMIT_US = 10000000ULL;
 constexpr TimeUs COLLECTION_INTERVAL_US = 86400000000ULL;

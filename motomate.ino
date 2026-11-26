@@ -7,6 +7,8 @@
 #include "Display.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
+#include <esp_attr.h>
+#include <esp_system.h>
 #include <esp_wifi.h>
 #include <esp_bt.h>
 #include <esp_bt_main.h>
@@ -19,7 +21,10 @@ Activity activity=Activity::Connecting;
 mm::TimeUs retryAt=0;
 mm::TimeUs countdownEnd=0;
 unsigned shown=999;
-constexpr mm::TimeUs COUNTDOWN_US=5000000ULL;
+constexpr uint32_t BENCH_MAGIC=0x4D4D0119;
+RTC_DATA_ATTR uint32_t benchMagic=0;
+RTC_DATA_ATTR uint32_t benchCycle=0;
+RTC_DATA_ATTR uint64_t priorAwakeUs=0;
 mm::Periodic diagnosticSchedule(5000000ULL);
 mm::TimeUs nowUs() { return mm::TimeUs(esp_timer_get_time()); }
 
@@ -30,10 +35,13 @@ bool radiosOff() {
     && esp_bt_controller_get_status()==ESP_BT_CONTROLLER_STATUS_IDLE
     && esp_bluedroid_get_status()==ESP_BLUEDROID_STATUS_UNINITIALIZED;
 }
-void abortCountdown(const char* why, bool panelAsleep=false) {
+void abortCountdown(const char* why) {
+  benchMagic=0;
+  benchCycle=0;
+  priorAwakeUs=0;
   Serial.printf("[SLEEP] CANCEL %s; maintenance recovery\n",why);
   hardwareCancelBenchSleep();
-  if (panelAsleep) displayResumePanel();
+
   activity=Activity::Connecting;
   wifiBegin();
 }
@@ -41,12 +49,15 @@ void countdownPoll() {
   const auto now=nowUs();
   if (digitalRead(WAKE_BTN_PIN)==LOW) { abortCountdown("button held"); return; }
   if (now>=countdownEnd) {
+    if (!displaySleepCountdown(0)) { abortCountdown("display unavailable"); return; }
     if (!radiosOff() || !hardwareArmBenchSleep()) { abortCountdown("arm failed"); return; }
-    displaySleepPanel();
-    if (!hardwareButtonReleased(nowUs()) || nowUs()>=mm::PARKED_AWAKE_LIMIT_US) {
-      abortCountdown("button or awake deadline",true); return;
+    if (!hardwareButtonReleased(nowUs()) || nowUs()>mm::BENCH_AWAKE_US+1000000ULL) {
+      abortCountdown("button or awake deadline"); return;
     }
-    Serial.printf("[SLEEP] timer=300s ext0=GPIO13 LOW pre_sleep_us=%llu\n",(unsigned long long)nowUs());
+    benchMagic=BENCH_MAGIC;
+    priorAwakeUs=nowUs();
+    Serial.printf("[SLEEP] cycle=%lu timer=30s ext0=GPIO13 LOW pre_sleep_us=%llu; TFT retained\n",
+        (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
     esp_deep_sleep_start();
     return;
   }
@@ -68,25 +79,42 @@ void setup() {
   settingsBegin();
   diagnosticSchedule.start(nowUs());
   otaInit();
-  if (settingsHealthy() && mm::benchSleepActive(settingsCurrent())) {
+  const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
+  const bool continuing=bench && cause==ESP_SLEEP_WAKEUP_TIMER &&
+      benchMagic==BENCH_MAGIC && benchCycle>0 && benchCycle<0xFFFFFFFFUL;
+  const bool requested=bench && mm::benchSleepActive(settingsCurrent());
+  bool consumed=!requested;
+  if (requested) {
     auto next=settingsCurrent();
     next.benchSleep=false;
-    // Commit/read back before any sleep so a reset always restores OTA access.
-    if (settingsSave(next) && digitalRead(WAKE_BTN_PIN)==HIGH && radiosOff()) {
-      displayBegin(false);
-      if (nowUs()+COUNTDOWN_US<mm::PARKED_AWAKE_LIMIT_US) {
-        countdownEnd=nowUs()+COUNTDOWN_US;
-        activity=Activity::BenchCountdown;
-        Serial.println("[SLEEP] one-shot BENCH countdown; request cleared");
-        return;
-      }
-      Serial.println("[SLEEP] CANCEL setup exceeded budget");
-      wifiBegin();
+    consumed=settingsSave(next);
+  }
+  // Timer wake alone may repeat the test. Button wake, reset and power loss
+  // clear the RTC test state and return to the existing OTA maintenance path.
+  if (!continuing) {
+    benchMagic=0;
+    benchCycle=0;
+    priorAwakeUs=0;
+  }
+  if (consumed && (continuing || (requested && cause==ESP_SLEEP_WAKEUP_UNDEFINED)) &&
+      digitalRead(WAKE_BTN_PIN)==HIGH && radiosOff()) {
+    ++benchCycle;
+    displayBegin(false);
+    if (nowUs()<mm::BENCH_AWAKE_US) {
+      countdownEnd=mm::BENCH_AWAKE_US;
+      activity=Activity::BenchCountdown;
+      Serial.printf("[SLEEP] BENCH 30/30 cycle=%lu prior_awake_us=%llu; button cancels\n",
+          (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
       return;
     }
-    Serial.println("[SLEEP] CANCEL request clear, button or radio check failed");
+    abortCountdown("setup exceeded budget");
+    return;
   }
-  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) displayBegin();
+  benchMagic=0;
+  benchCycle=0;
+  priorAwakeUs=0;
+  if (requested || continuing) Serial.println("[SLEEP] CANCEL request clear, button or radio check failed");
+  if (bench) displayBegin(cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON);
   wifiBegin();
 }
 

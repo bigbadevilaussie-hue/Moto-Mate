@@ -191,7 +191,8 @@ bool displaySleepCountdown(unsigned seconds) {
   }
   tft.fillRect(0,95,160,33,black);
   char label[20];
-  snprintf(label,sizeof(label),"IN %u s",seconds);
+  if (seconds) snprintf(label,sizeof(label),"IN %u s",seconds);
+  else snprintf(label,sizeof(label),"Z z z ...");
   tft.setTextColor(white);
   tft.setFont(&lgfx::fonts::FreeSansBold12pt7b);
   tft.drawString(label,(160-tft.textWidth(label))/2,95);
