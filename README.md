@@ -235,3 +235,7 @@ The original owner rules below are retained verbatim. Apply the following later 
 | [motomate_case.scad](motomate_case.scad) | V4 enclosure |
 
 **New AI chat:** Read aihandover.md first, then check current repository state. The battery-first directive, direct-port rule and protected software requirements govern all work.
+
+## V1.07 BLE commissioning
+
+See [B1 commissioning](ble-commissioning.md). Compile and physical tests pending; V1.06 remains verified baseline.

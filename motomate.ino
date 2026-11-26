@@ -2,6 +2,7 @@
 #include "Runtime.h"
 #include "BenchDiagnostics.h"
 #include "BenchCommission.h"
+#include "BenchBle.h"
 #include <esp_sleep.h>
 #include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
@@ -17,9 +18,10 @@ mm::Coordinator runtime(BENCH_WAKE_US);
 mm::Periodic reportTimer(1000000);
 mm::State reportedState = mm::State::Boot;
 esp_sleep_wakeup_cause_t wakeCause;
-enum class BootStage { Banner, Display, Storage, RadioStart, RadioPoll, Summary };
+enum class BootStage { Banner, Display, Storage, RadioStart, RadioPoll, BleStart, BlePoll, RecoveryStart, RecoveryPoll, Summary };
 BootStage bootStage = BootStage::Banner;
 bool displayOK = false, storageOK = false, radioOK = false;
+bool bleOK = false, recoveryOK = false, bleAttempted = false, recoveryAttempted = false;
 
 mm::TimeUs nowUs() {
   return static_cast<mm::TimeUs>(esp_timer_get_time());
@@ -60,16 +62,45 @@ void serviceBoot(mm::TimeUs now) {
       budget = 250000;
       if (commissionRadioPoll()) {
         radioOK = commissionRadioPassed();
+        bootStage = radioOK ? BootStage::BleStart : BootStage::Summary;
+      }
+      break;
+    case BootStage::BleStart:
+      budget = 3000000;
+      bleAttempted = true;
+      commissionBleBegin();
+      bootStage = BootStage::BlePoll;
+      break;
+    case BootStage::BlePoll:
+      budget = 3000000; // BLE teardown can be synchronous; record actual time.
+      if (commissionBlePoll()) {
+        bleOK = commissionBlePassed();
+        bootStage = bleOK ? BootStage::RecoveryStart : BootStage::Summary;
+      }
+      break;
+    case BootStage::RecoveryStart:
+      recoveryAttempted = true;
+      Serial.println("\n--- 07 / WIFI RECOVERY AFTER BLE OFF ------------------");
+      commissionRadioBegin(); // existing 800 ms guard and proven Wi-Fi path
+      bootStage = BootStage::RecoveryPoll;
+      break;
+    case BootStage::RecoveryPoll:
+      budget = 250000;
+      if (commissionRadioPoll()) {
+        recoveryOK = commissionRadioPassed();
         bootStage = BootStage::Summary;
       }
       break;
     case BootStage::Summary: {
-      const bool passed = displayOK && storageOK && radioOK;
+      const bool passed = displayOK && storageOK && radioOK && bleOK && recoveryOK;
       Serial.println("\n+================ COMMISSIONING REPORT ================+");
       Serial.printf("[RESULT] sprite=%s storage=%s wifi/clock/off=%s\n",
           displayOK?"PASS":"FAIL", storageOK?"PASS":"FAIL",
           (displayOK && storageOK) ? (radioOK?"PASS":"FAIL") : "SKIPPED");
-      Serial.println("[RESULT] BLE/OSA=PENDING; physical TFT/sensors/sleep=NOT TESTED");
+      Serial.printf("[RESULT] BLE local=%s Wi-Fi recovery=%s; OSA host report separate\n",
+          bleAttempted ? (bleOK?"PASS":"FAIL") : "SKIPPED",
+          recoveryAttempted ? (recoveryOK?"PASS":"FAIL") : "SKIPPED");
+      Serial.println("[RESULT] physical TFT/sensors/sleep=NOT TESTED");
       Serial.println(passed ? "[RESULT] IMPLEMENTED TESTS PASS; COMMISSIONING INCOMPLETE"
                             : "[RESULT] FAIL; inspect diagnostics above");
       Serial.println("[MODE] BENCH / deep sleep inhibited");
@@ -132,6 +163,7 @@ void loop() {
       break;
     case mm::State::BenchIdle:
     case mm::State::Fault:
+      commissionBleCancel();
       commissionRadioCancel();
       // Terminal bench states; no fake successful service or reset loop.
       break;

@@ -332,9 +332,6 @@ bool commissionRadioPoll() {
       break;
     case Radio::OffGuard:
       if (elapsed(800)) {
-        Serial.println("\n--- 06 / BLE & OSA ------------------------------------");
-        Serial.println("[BLE] NOT TESTED: protected manager not yet ported");
-        Serial.println("[OSA] NOT TESTED: no advertising or handshake attempted");
         stage(Radio::Done);
       }
       break;
