@@ -33,7 +33,7 @@ public:
     p.offset_rotation = 0;
     p.readable = false;
     p.invert = false;
-    p.rgb_order = false;
+    p.rgb_order = true; // V1.13 owner observed red and blue reversed.
     panel.config(p);
     setPanel(&panel);
   }

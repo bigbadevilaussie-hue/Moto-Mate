@@ -7,3 +7,7 @@ Display.cpp configures ST7735S SPI2, write-only, 16 MHz, rotation 1, 128x160 por
 Serial INIT OK/SENT means software sent commands only, not proven panel output. Owner must visually verify colour, full border, upright splash and VER 1.13. No physical readback. Build, flash and display tests pending. No field mode/sleep lifecycle or sensor-driven screen changes in this patch.
 
 Existing seven-mode renderer remains; only Initialising and Maintenance are wired into current BENCH coordinator. Battery readings must be supplied by qualified sensors, not simulated.
+
+## V1.14 colour-order correction
+
+V1.13 owner compile PASS (817849 B flash, 46720 B static RAM); OTA V1.10 app1/4c134540 to V1.13 app0/5263863f PASS; NVS initialised BENCH, Wi-Fi recovered. After wiring correction, physical RGB frames and logo visible, but red displayed blue. Change only panel rgb_order false to true and bump version. V1.14 compile/OTA/visual colour verification pending. Border/offsets/orientation and BL current not yet qualified. Leave BL disconnected; no wiring, Wi-Fi or OTA changes.
