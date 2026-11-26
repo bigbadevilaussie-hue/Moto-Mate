@@ -1,4 +1,5 @@
 #include "Storage.h"
+#include "LogIdentity.h"
 #include <LittleFS.h>
 #include <esp_partition.h>
 #include <esp_heap_caps.h>
@@ -7,6 +8,7 @@
 
 namespace {
 const char* fsState="not_mounted";
+const char* logIdState="not_checked";
 bool attempted=false,mounted=false;
 size_t partitionBytes=0,totalBytes=0,usedBytes=0;
 uint64_t mountUs=0,statsUs=0,statsAt=0,lastLoop=0,maxLoopGap=0;
@@ -15,6 +17,9 @@ uint32_t sketchBytes=0,flashBytes=0;
 void storageBeginMaintenance() {
   if (attempted) return;
   attempted=true;
+  mm::log::Identity id={};
+  logIdState=mm::log::identityStateName(mm::log::readIdentity(id));
+  Serial.printf("[LOG] schema=1 identity=%s writes=disabled\n",logIdState);
   const auto* p=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_DATA_SPIFFS,"spiffs");
   partitionBytes=p?p->size:0;
   flashBytes=ESP.getFlashChipSize();
@@ -50,7 +55,11 @@ String storageJson() {
       (unsigned long)free,(unsigned long long)mountUs,(unsigned long long)statsUs,
       (unsigned long long)((uint64_t(esp_timer_get_time())-statsAt)/1000));
   }
-  return String(b);
+  String out(b);
+  out.remove(out.length()-1);
+  out+=",\"log_schema\":1,\"log_identity\":\""; out+=logIdState;
+  out+="\",\"log_writes_enabled\":false}";
+  return out;
 }
 void resourcesObserveLoop(uint64_t now) {
   if (lastLoop && now>=lastLoop && now-lastLoop>maxLoopGap) maxLoopGap=now-lastLoop;
