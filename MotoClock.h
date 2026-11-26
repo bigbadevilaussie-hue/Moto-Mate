@@ -6,3 +6,6 @@ void clockBegin(bool deepSleepWake);
 uint64_t clockUtcUs(); // zero when UTC provenance is unknown
 bool clockApplyHostUtc(uint64_t utcUs);
 String clockJson();
+
+// Sets only clock quality bits 0..1; returns zero when unknown.
+uint64_t clockLogUtcMs(uint16_t& validity);

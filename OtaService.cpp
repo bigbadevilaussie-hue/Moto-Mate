@@ -226,10 +226,11 @@ bool parseGeneration(const String& s,uint64_t& value) {
   if(!n) return false;
   value=n; return true;
 }
-bool logCommissionAllowed() {
+bool logCommissionAllowed(bool monitorControl=false) {
   if(!authorised()) { server.send(403,"text/plain","unauthorised"); return false; }
   if(receiving || complete || rebootAt || Update.isRunning() ||
-      !settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) {
+      !settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench ||
+      (!monitorControl && storageMonitorActive())) {
     server.send(409,"text/plain","idle BENCH maintenance required"); return false;
   }
   return true;
@@ -325,6 +326,27 @@ void postLogAck() {
   snprintf(b,sizeof(b),"{\"state\":\"%s\",\"sequence\":\"%016llx\"}",state,(unsigned long long)seq);
   server.send(!strcmp(state,"removed")?200:409,"application/json",b);
 }
+void getMonitor() {
+  if(!logCommissionAllowed(true)) return;
+  server.send(200,"application/json",storageMonitorJson());
+}
+void startMonitor() {
+  if(!logCommissionAllowed(true)) return;
+  uint64_t generation=0;
+  const String count=server.arg("count");
+  if(server.args()!=2 || !parseGeneration(server.arg("generation"),generation) ||
+     count.length()!=1 || count[0]<'1' || count[0]>'4' || settingsCurrent().benchSleep) {
+    server.send(400,"text/plain","expected generation, count=1..4 and bench sleep not armed"); return;
+  }
+  const bool ok=storageMonitorStart(generation,bootId,unsigned(count[0]-'0'));
+  server.send(ok?202:409,"application/json",storageMonitorJson());
+}
+void sealMonitor() {
+  if(!logCommissionAllowed(true)) return;
+  if(server.args()) { server.send(400,"text/plain","no arguments expected"); return; }
+  const bool ok=storageMonitorSeal();
+  server.send(ok?200:409,"application/json",storageMonitorJson());
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -341,6 +363,9 @@ void startServer() {
   server.on("/log/descriptor",HTTP_GET,[](){ getLogTransfer(false); });
   server.on("/log/data",HTTP_GET,[](){ getLogTransfer(true); });
   server.on("/log/ack",HTTP_POST,postLogAck);
+  server.on("/log/monitor",HTTP_GET,getMonitor);
+  server.on("/log/monitor/start",HTTP_POST,startMonitor);
+  server.on("/log/monitor/seal",HTTP_POST,sealMonitor);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());
@@ -354,6 +379,7 @@ void otaStart() {
   else server.begin();
 }
 void otaStop() {
+  storageMonitorCancel("wifi_lost_preserved");
   if (receiving || complete || Update.isRunning()) abortUpload("Wi-Fi lost");
   sawFile=false;
   server.stop();
@@ -369,4 +395,7 @@ void otaPoll() {
     abortUpload("request ended without commit");
     sawFile=false;
   }
+  if(rebootAt || !settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench || settingsCurrent().benchSleep) {
+    storageMonitorCancel("maintenance_ended_preserved");
+  } else if(!receiving && !complete && !Update.isRunning()) storageMonitorPoll(esp_timer_get_time());
 }

@@ -137,3 +137,19 @@ String sensorsJson() {
   s+=",\"gravity_delta_g\":"+number(mv&&reference.ready(),reference.delta(accel))+"}}";
   return s;
 }
+
+void sensorsLogSample(uint64_t now,mm::log::Sample& sample,uint16_t& validity) {
+  if(shtValid && now>=shtAt && now-shtAt<=3000000ULL &&
+     isfinite(temp) && isfinite(rh) && temp>=-40 && temp<=125 && rh>=0 && rh<=100) {
+    sample.temperature_centi_c=int16_t(lroundf(temp*100));
+    sample.humidity_centi_pct=uint16_t(lroundf(rh*100));
+    validity|=(1u<<3)|(1u<<4);
+  }
+  if(mpuValid && now>=mpuAt && now-mpuAt<=500000ULL && reference.ready()) {
+    const float delta=reference.delta(accel);
+    if(isfinite(delta) && delta>=0 && delta<=65.535f) {
+      sample.gravity_delta_mg=uint16_t(lroundf(delta*1000));
+      validity|=1u<<10;
+    }
+  }
+}

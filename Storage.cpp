@@ -1,6 +1,9 @@
 #include "Storage.h"
 #include "LogIdentity.h"
 #include "LogSpool.h"
+#include "LogMonitorPolicy.h"
+#include "BenchSensors.h"
+#include "MotoClock.h"
 #include "Config.h"
 #include <esp_sleep.h>
 #include <LittleFS.h>
@@ -23,6 +26,13 @@ bool attempted=false,mounted=false;
 size_t partitionBytes=0,totalBytes=0,usedBytes=0;
 uint64_t mountUs=0,statsUs=0,statsAt=0,lastLoop=0,maxLoopGap=0;
 uint32_t sketchBytes=0,flashBytes=0;
+struct MonitorSession {
+  mm::log::Header header={};
+  unsigned target=0,records=0;
+  uint64_t due=0;
+  bool active=false;
+  const char* state="idle";
+} monitor;
 void refreshSpace() {
   if(!mounted) return;
   const uint64_t start=esp_timer_get_time();
@@ -112,7 +122,7 @@ bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& r
   if(strcmp(logIdState,"valid") || logId.generation!=generation ||
      usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
   mm::log::Header h={};
-  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=29;
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=30;
   if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
   h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
@@ -216,6 +226,70 @@ const char* storageBenchAck(uint64_t generation,uint64_t seq,const String& suppl
   Serial.printf("[LOG] BENCH durable ACK seq=%016llx removed; used=%u\\n",(unsigned long long)seq,unsigned(usedBytes));
   return "removed";
 }
+bool storageMonitorActive() { return monitor.active; }
+String storageMonitorJson() {
+  char b[300],seq[24]="null";
+  if(monitor.header.file_seq) snprintf(seq,sizeof(seq),"\"%016llx\"",(unsigned long long)monitor.header.file_seq);
+  snprintf(b,sizeof(b),"{\"state\":\"%s\",\"active\":%s,\"sequence\":%s,\"records\":%u,\"target\":%u,\"nominal_period_ms\":300000}",
+    monitor.state,monitor.active?"true":"false",seq,monitor.records,monitor.target);
+  return String(b);
+}
+bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count) {
+  if(!mounted || monitor.active || !mm::log::benchCountOK(count)) return false;
+  refreshIdentity(); refreshSpace();
+  if(strcmp(logIdState,"valid") || generation!=logId.generation || usedBytes>totalBytes ||
+     totalBytes-usedBytes<=16384+4096) return false;
+  MonitorSession next;
+  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=30;
+  if(esp_efuse_mac_get_default(next.header.device_mac)!=ESP_OK) return false;
+  next.header.generation=generation; next.header.opened_boot_id=bootId; next.header.nominal_period_ms=300000;
+  next.target=count; next.active=true; next.state="sampling";
+  next.due=mm::log::nextMonitorDue(esp_timer_get_time(),true);
+  monitor=next; return true;
+}
+void storageMonitorCancel(const char* reason) {
+  if(!monitor.active) return;
+  monitor.active=false; monitor.state=reason;
+  Serial.printf("[LOG] BENCH monitor stopped: %s records=%u; preserve open file if present\n",reason,monitor.records);
+}
+bool storageMonitorSeal() {
+  if(!monitor.active) return false;
+  if(!monitor.records) { storageMonitorCancel("cancelled"); return true; }
+  mm::log::Scan scan={}; mm::log::Suffix suffix=mm::log::Suffix::Open;
+  const bool ok=mm::log::recoverOpen(mm::log::Kind::Monitor,monitor.header.generation,monitor.header.file_seq,scan,suffix) &&
+    scan.classification==mm::log::ScanClass::Complete && scan.records==monitor.records;
+  refreshSpace();
+  monitor.active=false; monitor.state=ok?"complete":"seal_failed_preserved";
+  return ok;
+}
+void storageMonitorPoll(uint64_t now) {
+  if(!monitor.active || now<monitor.due) return;
+  refreshSpace();
+  if(usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) { storageMonitorCancel("storage_low_preserved"); return; }
+  auto& h=monitor.header;
+  mm::log::Sample sample={};
+  mm::log::Prefix p={};
+  p.boot_id=h.opened_boot_id;
+  p.mono_ms=now/1000>=UINT32_MAX?UINT32_MAX:uint32_t(now/1000);
+  p.type=1; p.state=0x46; // BENCH maintenance, no claim of riding or protection qualification
+  p.utc_ms=clockLogUtcMs(p.validity);
+  sensorsLogSample(now,sample,p.validity);
+  // ADC rail estimate is deliberately NOT a qualified battery voltage. No GPS yet.
+  uint8_t record[mm::log::RECORD_BYTES];
+  if(!mm::log::encode(p,sample,record)) { storageMonitorCancel("encode_failed_preserved"); return; }
+  if(!monitor.records) {
+    if(!mm::log::allocateSequence(h.generation,h.file_seq)) { storageMonitorCancel("identity_failed"); return; }
+    refreshIdentity();
+    h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
+    if(!mm::log::createOpen(h)) { storageMonitorCancel("create_failed_preserved"); return; }
+  }
+  if(!mm::log::appendOne(h,monitor.records,record)) { storageMonitorCancel("append_failed_preserved"); return; }
+  ++monitor.records; refreshSpace();
+  Serial.printf("[LOG] BENCH monitor seq=%016llx records=%u validity=%04x\n",
+      (unsigned long long)h.file_seq,monitor.records,unsigned(p.validity));
+  if(monitor.records>=monitor.target) { storageMonitorSeal(); return; }
+  monitor.due=mm::log::nextMonitorDue(now,false);
+}
 String storageJson() {
   char b[380];
   if (!mounted) {
@@ -231,7 +305,7 @@ String storageJson() {
   String out(b);
   out.remove(out.length()-1);
   out+=",\"log_schema\":1,\"log_identity\":\""; out+=logIdState;
-  out+="\",\"log_writes_enabled\":false}";
+  out+="\",\"log_writes_enabled\":false,\"bench_monitor\":"; out+=storageMonitorJson(); out+="}";
   return out;
 }
 void resourcesObserveLoop(uint64_t now) {

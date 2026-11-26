@@ -22,3 +22,11 @@ bool storageOpenBenchTransfer(uint64_t generation,uint64_t seq,fs::File& file,St
 
 // Explicit authenticated BENCH receipt. Exact fresh descriptor match required.
 const char* storageBenchAck(uint64_t generation,uint64_t seq,const String& supplied);
+
+// Volatile, bounded maintenance-only sampling session; never armed by boot.
+bool storageMonitorActive();
+String storageMonitorJson();
+bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count);
+bool storageMonitorSeal();
+void storageMonitorCancel(const char* reason);
+void storageMonitorPoll(uint64_t now);

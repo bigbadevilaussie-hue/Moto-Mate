@@ -141,3 +141,11 @@ String clockJson() {
   out+="}";
   return out;
 }
+
+uint64_t clockLogUtcMs(uint16_t& validity) {
+  const uint64_t us=clockUtcUs();
+  validity&=~uint16_t(3);
+  if(!us) return 0;
+  validity|=quality==Quality::Synced?1u:2u;
+  return us/1000;
+}
