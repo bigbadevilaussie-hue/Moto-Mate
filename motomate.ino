@@ -8,6 +8,7 @@
 #include "MotoClock.h"
 #include "Rtc8563.h"
 #include "BenchSensors.h"
+#include "Storage.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -45,6 +46,7 @@ void abortCountdown(const char* why) {
   Serial.printf("[SLEEP] CANCEL %s; maintenance recovery\n",why);
   hardwareCancelBenchSleep();
   sensorsResume();
+  storageBeginMaintenance();
 
   activity=Activity::Connecting;
   wifiBegin();
@@ -131,10 +133,12 @@ void setup() {
   priorAwakeUs=0;
   if (requested || continuing) Serial.println("[SLEEP] CANCEL request clear, button or radio check failed");
   if (bench) displayBegin(cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON);
+  storageBeginMaintenance();
   wifiBegin();
 }
 
 void loop() {
+  resourcesObserveLoop(nowUs());
   if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
   hardwarePoll(nowUs());
   if (activity!=Activity::BenchCountdown || nowUs()+5000000ULL<countdownEnd) sensorsPoll(nowUs());

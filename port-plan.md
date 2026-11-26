@@ -15,7 +15,7 @@ SAVE THE BATTERY AT ALL COSTS. Clean, optimised direct port; preserve proven beh
 
 Phase 1: breadboard ESP32 + TFT on USB-C to iMac, sensors as required and bench PSU to simulate bike voltage through reviewed ADC divider. BENCH mode. Owner target approximately 90% of code testing before locking circuit; not measured coverage. USB-powered bench cannot prove total 12 V battery input current or crank brownout immunity. Phase 2: lock circuit only after owner approval, then owner builds stripboard and tests production power/hardware. On-bike validation is a proposed later gate, not an authorised installation. Hardware/RTC/power design remains open.
 
-## Live completion checklist (V1.23)
+## Live completion checklist (V1.24)
 
 Only checked items are accepted at their explicitly stated scope; full stages remain open until all acceptance criteria pass. PRIME DIRECTIVE: FIELD 300 s actual sleep, <=10 s necessary awake, immediate sleep when safe, no routine display/radio overhead. Not yet integrated.
 
@@ -25,11 +25,11 @@ Only checked items are accepted at their explicitly stated scope; full stages re
 - [ ] 3 — Button: debounce/held/release and wake verified; gestures pending.
 - [ ] 4 — Clock: V1.21/22 host sync, NVS and absent RTC verified; drift and physical RTC pending.
 - [ ] 5 — Settings: NVS BENCH profile/OTA persistence verified; production settings coverage pending.
-- [ ] 6 — Diagnostics: serial/status foundation; durable bounded diagnostics pending.
+- [ ] 6 — Diagnostics: V1.24 resource/loop instrumentation; durable bounded diagnostics pending.
 - [ ] 7 — Sensors: V1.23 commissioning slice; ADC qualification and physical SHT40/MPU tests pending.
 - [ ] 8 — Buzzer.
 - [ ] 9 — Display lifecycle/backlight.
-- [ ] 10 — Wake logs/storage.
+- [ ] 10 — Wake logs/storage: V1.24 non-destructive mount and capacity diagnostics; append/seal/recovery next.
 - [ ] 11 — BLE/OSA: archived commissioning proven, production integration pending.
 - [ ] 12 — Wi-Fi: BENCH OTA path proven, production coexistence/power pending.
 - [ ] 13 — HTTP/OTA: bench slot switch proven, full compatibility/failure tests pending.
@@ -119,3 +119,6 @@ Every firmware patch: scoped change, version bump, owner compile, specific expec
 **V1.22 owner validation:** V1.21 OTA app1 boot c3836bf3, host sync and NVS readback PASS; estimated offset -13.762 ms, RTT 15.287 ms. V1.22 compiled 873793 B flash, 47660 B static RAM, OTA app0 f06582a1, I2C ready, PCF8563 absent, NVS checkpoint loaded, platform clock survived software reset but marked unknown, host correction -284183 us and no unnecessary checkpoint write. Drift not established. Physical RTC pending.
 
 **V1.23 early stage 7 commissioning:** ADAPT donor sensor interface, retain actual ADC millivolt observation, REBUILD NTC and default fake voltage/temperature with independent SHT40 and MPU6050 optional drivers. Shared Wire owner, config addresses 0x44/0x68, 100 kHz, 25 ms transaction timeout. SHT40 nonblocking conversion interval with CRC and validity; MPU identity and configuration readback, 10 Hz BENCH samples, 5 s failed-device retry, gravity/gyro magnitude and conservative stationary reference learning retained in RTC RAM. Reference adapts only within a small stable envelope; large stable orientation changes require reset/recalibration (not automatically learned away). Diagnostic only, no motion/lean/ride decisions. Sample age invalidation; null for unknown values. No fake voltage or temperature. Quiesce MPU with verified sleep in final 5 s of BENCH awake; cancel sleep if a previously configured MPU cannot be verified asleep. No INT wake or continuous parked sampling. Wire remains initialized during ESP sleep; current unmeasured. No FIELD enable, protected radio edits or OTA transfer changes. Clock drift and hardware qualification remain open. No local native or Arduino build claimed. Owner may attach sensors later after verifying supply/pullups. 
+
+
+**V1.24 storage/OSA fast-track (owner priority):** V1.23 owner verified OTA boot, optional sensor absence with null values, normal BENCH splash mode 7, five-second countdown, quiesce absent MPU, sleep entry at 30007090 us and automatic cycle 2. Physical sensors, exact sleep duration and current remain pending. V1.23 OTA image 880704 B; compiler flash/static RAM not reported. ADAPT archived safe LittleFS mount, REBUILD donor duplicated compression/log lifecycle; V1.24 mounts only on maintenance/recovery path using begin(false), never formats even a blank partition. Mount failure leaves OTA available; do not erase or format on error. One cached space snapshot per boot (no repeated directory work; no app logging yet), partition and filesystem capacity, mount/stats timing, flash/image, internal heap free/min/largest, loop gap and NVS entry counts exposed on existing status. Loop gap includes blocking request processing and task scheduling; not a per-service execution measurement. No mount or new flash writes on repeating sleep test. No storage allocation change or protected radio/OTA transfer change. Compile and mount verification pending. Prioritise stage 10/11/17 vertical slice after this baseline: one checked append/seal/recovery utility, exact host compatibility fixtures, then one verified receipt path. Compression location and algorithm to be selected using end-to-end energy/time/space tests, not assumption; benchmark streaming raw to OSA versus one shared transactional gzip path, retain existing format compatibility. No log delivery, gzip or ACK deletion implemented in this patch. Keep elapsed 24h scheduled collection and explicit ride/maintenance opportunities; no new wake solely for logs, no deletion without durable exact-file receipt. All audit tickets remain open until tests.

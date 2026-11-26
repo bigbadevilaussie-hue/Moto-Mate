@@ -5,6 +5,7 @@
 #include "MotoClock.h"
 #include "ClockPolicy.h"
 #include "BenchSensors.h"
+#include "Storage.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
@@ -78,6 +79,10 @@ void status() {
   body += clockJson();
   body += ",\"sensors\":";
   body += sensorsJson();
+  body += ",\"storage\":";
+  body += storageJson();
+  body += ",\"resources\":";
+  body += resourcesJson();
   body += "}";
   server.send(200,"application/json",body);
 }
