@@ -11,3 +11,7 @@ String resourcesJson();
 String storageLogIdentityJson();
 bool storageProvisionLogIdentity(uint64_t generation);
 bool storageAllocateTestSequence(uint64_t generation,uint64_t& seq);
+
+// Explicit BENCH commissioning only. No automatic production log writes.
+bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& result);
+bool storageRecoverTestLog(uint64_t generation,uint64_t seq,String& result);

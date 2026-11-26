@@ -265,6 +265,29 @@ void testLogSequence() {
   char b[48]; snprintf(b,sizeof(b),",\"allocated\":\"%016llx\"}",(unsigned long long)seq);
   body+=b; server.send(200,"application/json",body);
 }
+void testLogWrite() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0;
+  const String mode=server.arg("mode");
+  if(server.args()!=2 || !parseGeneration(server.arg("generation"),generation) ||
+     (mode!="open" && mode!="seal")) {
+    server.send(400,"text/plain","expected generation and mode=open or seal"); return;
+  }
+  String result;
+  const bool ok=storageTestLog(generation,bootId,mode=="open",result);
+  server.send(ok?200:409,"application/json",result.length()?result:"{\"ok\":false}");
+}
+void testLogRecover() {
+  if(!logCommissionAllowed()) return;
+  uint64_t generation=0,seq=0;
+  if(server.args()!=2 || !parseGeneration(server.arg("generation"),generation) ||
+     !parseGeneration(server.arg("sequence"),seq)) {
+    server.send(400,"text/plain","expected generation and sequence"); return;
+  }
+  String result;
+  const bool ok=storageRecoverTestLog(generation,seq,result);
+  server.send(ok?200:409,"application/json",result.length()?result:"{\"ok\":false}");
+}
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
@@ -276,6 +299,8 @@ void startServer() {
   server.on("/log/identity",HTTP_GET,getLogIdentity);
   server.on("/log/identity",HTTP_POST,setLogIdentity);
   server.on("/log/test-sequence",HTTP_POST,testLogSequence);
+  server.on("/log/test-write",HTTP_POST,testLogWrite);
+  server.on("/log/test-recover",HTTP_POST,testLogRecover);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();
   Serial.printf("[OTA] READY http://%s/status /ota (authenticated)\n",WiFi.localIP().toString().c_str());

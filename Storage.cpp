@@ -1,5 +1,8 @@
 #include "Storage.h"
 #include "LogIdentity.h"
+#include "LogSpool.h"
+#include "Config.h"
+#include <esp_sleep.h>
 #include <LittleFS.h>
 #include <esp_partition.h>
 #include <esp_heap_caps.h>
@@ -18,6 +21,12 @@ bool attempted=false,mounted=false;
 size_t partitionBytes=0,totalBytes=0,usedBytes=0;
 uint64_t mountUs=0,statsUs=0,statsAt=0,lastLoop=0,maxLoopGap=0;
 uint32_t sketchBytes=0,flashBytes=0;
+void refreshSpace() {
+  if(!mounted) return;
+  const uint64_t start=esp_timer_get_time();
+  totalBytes=LittleFS.totalBytes(); usedBytes=LittleFS.usedBytes();
+  statsAt=esp_timer_get_time(); statsUs=statsAt-start;
+}
 void refreshIdentity() {
   logId={};
   logIdState=mm::log::identityStateName(mm::log::readIdentity(logId));
@@ -94,6 +103,49 @@ bool storageAllocateTestSequence(uint64_t generation,uint64_t& seq) {
   const bool ok=mm::log::allocateSequence(generation,seq);
   refreshIdentity();
   return ok;
+}
+bool storageTestLog(uint64_t generation,uint32_t bootId,bool leaveOpen,String& result) {
+  if(!mounted) return false;
+  refreshIdentity(); refreshSpace();
+  if(strcmp(logIdState,"valid") || logId.generation!=generation ||
+     usedBytes>totalBytes || totalBytes-usedBytes<=16384+4096) return false;
+  mm::log::Header h={};
+  h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=27;
+  if(esp_efuse_mac_get_default(h.device_mac)!=ESP_OK) return false;
+  h.generation=generation; h.nominal_period_ms=300000; h.opened_boot_id=bootId;
+  const uint64_t ms=uint64_t(esp_timer_get_time())/1000;
+  h.opened_mono_ms=ms>UINT32_MAX?UINT32_MAX:uint32_t(ms);
+  // Real observed boot/wake evidence, not fabricated voltage or time.
+  mm::log::Prefix p={0,bootId,h.opened_mono_ms,7,0x46,0};
+  mm::log::Boot boot={uint16_t(esp_reset_reason()),uint16_t(esp_sleep_get_wakeup_cause()),UINT32_MAX,UINT32_MAX,0,0};
+  uint8_t record[mm::log::RECORD_BYTES];
+  if(!mm::log::encode(p,boot,record) || !mm::log::allocateSequence(generation,h.file_seq)) return false;
+  refreshIdentity();
+  const bool written=mm::log::createOpen(h) && mm::log::appendOne(h,0,record);
+  mm::log::Scan scan={}; mm::log::Suffix suffix=mm::log::Suffix::Open;
+  const bool ok=written && (leaveOpen || mm::log::recoverOpen(mm::log::Kind::Monitor,generation,h.file_seq,scan,suffix));
+  refreshSpace();
+  char path[mm::log::PATH_BYTES],b[240];
+  if(!mm::log::filename(mm::log::Kind::Monitor,generation,h.file_seq,suffix,path)) return false;
+  snprintf(b,sizeof(b),"{\"ok\":%s,\"sequence\":\"%016llx\",\"path\":\"%s\",\"bytes\":%u,\"records\":%u,\"state\":\"%s\"}",
+    ok?"true":"false",(unsigned long long)h.file_seq,path,
+    unsigned(ok&&leaveOpen?128:scan.bytes),unsigned(ok&&leaveOpen?1:scan.records),
+    ok?(leaveOpen?"open":mm::log::scanName(scan.classification)):"failed_preserved");
+  result=b; return ok && (leaveOpen || scan.classification==mm::log::ScanClass::Complete);
+}
+bool storageRecoverTestLog(uint64_t generation,uint64_t seq,String& result) {
+  if(!mounted) return false;
+  refreshIdentity();
+  if(strcmp(logIdState,"valid") || generation!=logId.generation || !seq || seq>logId.reservedThrough) return false;
+  mm::log::Scan scan={}; mm::log::Suffix suffix=mm::log::Suffix::Open;
+  const bool ok=mm::log::recoverOpen(mm::log::Kind::Monitor,generation,seq,scan,suffix);
+  refreshSpace();
+  char path[mm::log::PATH_BYTES],b[240];
+  if(!mm::log::filename(mm::log::Kind::Monitor,generation,seq,suffix,path)) return false;
+  snprintf(b,sizeof(b),"{\"ok\":%s,\"sequence\":\"%016llx\",\"path\":\"%s\",\"bytes\":%u,\"records\":%u,\"state\":\"%s\"}",
+    ok?"true":"false",(unsigned long long)seq,path,unsigned(scan.bytes),unsigned(scan.records),
+    ok?mm::log::scanName(scan.classification):"failed_preserved");
+  result=b; return ok;
 }
 String storageJson() {
   char b[380];
