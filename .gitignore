@@ -6,3 +6,11 @@ build/
 Config.local.h
 
 Ota.local.h
+
+# Local macOS GUI build products
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+.eggs/
+*.egg-info/

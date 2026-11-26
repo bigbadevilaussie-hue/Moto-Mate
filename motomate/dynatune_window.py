@@ -130,7 +130,8 @@ class DynaTuneWindow(tk.Toplevel):
         # Scroll on mouse wheel
         def _on_wheel(event):
             canvas.yview_scroll(int(-event.delta / 120), "units")
-        canvas.bind_all("<MouseWheel>", _on_wheel)
+        # Bind only this window; closing it must not leave a global callback.
+        self.bind("<MouseWheel>", _on_wheel)
 
         for label, key in self.SECTIONS:
             self._build_section(inner, label, key, status_colours, t)
