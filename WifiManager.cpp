@@ -85,7 +85,7 @@ bool wifiPoll() {
     case Radio::InitSettle: {
       if (!elapsed(100)) break;
 #if defined(WIFI_SSID) && defined(WIFI_PASSWORD)
-      const esp_err_t tx = esp_wifi_set_max_tx_power(80); // requested 20 dBm ceiling, BENCH only
+      const esp_err_t tx = esp_wifi_set_max_tx_power(34); // donor 8.5 dBm requested ceiling, BENCH S3 qualification
       int8_t limit = 0;
       const esp_err_t got = esp_wifi_get_max_tx_power(&limit);
       if (got == ESP_OK) Serial.printf("[WIFI] configured TX ceiling=%.2f dBm; set=%s\n", limit/4.0, esp_err_to_name(tx));
