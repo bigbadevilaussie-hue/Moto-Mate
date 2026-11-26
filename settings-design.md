@@ -1,0 +1,12 @@
+# V1.12 — persistent settings foundation
+
+Owner decision 2026-11-26: BENCH/FIELD is an NVS setting, never a firmware image or OTA switch. Same firmware, requested profile distinct from runtime activity. NVS namespace motomate, key config_v1, one uint32 word with schema marker 0x4d4d0100 and flags FIELD=1, bench sleep requested=2, verbose requested=4. Missing key initialises BENCH/false/false once, commit and reopen/readback; identical updates do not write. Unknown schema/type or I/O failure is explicitly reported, no erase or automatic repair, development recovery access remains. Normal app-only OTA does not erase NVS; full flash erase does. No battery thresholds/calibration added before measurements.
+
+GET /status includes settings object, old OTA client contract retained (mode ota_bench remains a compatibility label, not profile). Authenticated GET /settings and POST /settings use existing local X-Moto-Key; full three-field URL-encoded request profile=BENCH|FIELD, bench_sleep=0|1, verbose=0|1. Reject malformed fields, writes during OTA, unavailable NVS. CLI tools/moto_settings.py reads local key without printing it and verifies a fresh GET. Single owner, last complete write wins. No reboot needed for changes. Plain HTTP trusted LAN only.
+
+Both profiles and both flags can be stored and read back now. FIELD and BENCH sleep runtime capability gates are deliberately false until real power/safety/maintenance recovery paths are integrated; selecting FIELD reports effective_profile RECOVERY (awake, OTA access retained), selecting sleep reports bench_sleep_active=false. This is not field-ready and must not be deployed unattended on the bike. Verbose flag is live in BENCH: periodic serial hardware snapshot every nominal 5 seconds; ignored in FIELD/recovery. No sleep side effects or production protection introduced. These gates are implementation readiness, not alternate firmware variants. Future same firmware will honour requested profile and bench sleep when those services are proven. No OSA changes.
+
+Host examples (after V1.12 installed):
+    cd ~/Documents/Arduino/motomate && /opt/local/bin/python3.13 tools/moto_settings.py 192.168.8.136
+    cd ~/Documents/Arduino/motomate && /opt/local/bin/python3.13 tools/moto_settings.py 192.168.8.136 --profile BENCH --verbose 1
+Native policy test tests/settings_test.cpp. Compile, physical NVS reboot/OTA persistence, API error cases and real hardware operation pending owner validation.

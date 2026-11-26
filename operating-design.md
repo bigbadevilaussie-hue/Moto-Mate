@@ -64,6 +64,8 @@ These are design concepts, not the exact final enum/API or a claim that V1.04 im
 
 ## 5. BENCH, FIELD, sleep and fault policy
 
+**AGREED owner rule (2026-11-26): BENCH/FIELD is an NVS setting, never an OTA build variant.** Profile, bench sleep and verbose flags persist across application updates; effective activity and safety state remain runtime-owned. V1.12 implements the NVS contract; FIELD and bench sleep remain capability-gated pending runtime integration. See [settings-design.md](settings-design.md).
+
 **DESIGN:** BENCH and FIELD are profiles of the same production firmware. BENCH is not synonymous with maintenance or always awake. Independent bench sleep enable and verbose diagnostics allow real sleep, wake, RTC and current tests without abandoning the BENCH profile. FIELD enforces battery-preservation rules; cannot accidentally retain bench stay-awake override. BENCH on USB may explicitly remain awake for development. Do not assume USB bench can prove 12 V input current or crank brownout immunity.
 
 **AGREED owner direction (2026-11-26):** routine parked operation is 300 seconds in deep sleep, wake, perform necessary work and return to deep sleep in under 10 seconds; faster is better. The 10-second target covers boot, sensor acquisition, assessment, logging, due communications and shutdown, not merely the application loop. Ride, maintenance, PANIC/FAULT and safe transaction completion require distinct budgets; do not force sleep mid-flash or unsafe storage commit. Defer unfinished noncritical work persistently at safe boundaries rather than extend ordinary parked wakes. Five minutes means sleep duration, not start-to-start period. Exact subphase allocations and exception deadlines remain design proposals.

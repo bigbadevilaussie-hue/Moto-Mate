@@ -1,6 +1,7 @@
 #include "Config.h"
 #include "OtaService.h"
 #include "Hardware.h"
+#include "Settings.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <Update.h>
@@ -68,6 +69,8 @@ void status() {
   String body(out);
   body.remove(body.length()-1);
   body += hardwareStatus();
+  body += ",\"settings\":";
+  body += settingsJson();
   body += "}";
   server.send(200,"application/json",body);
 }
@@ -143,9 +146,41 @@ void finishRequest() {
   sawFile = false;
 }
 
+void getSettings() {
+  if (!authorised()) { server.send(403,"text/plain","unauthorised"); return; }
+  server.send(200,"application/json",settingsJson());
+}
+void setSettings() {
+  if (!authorised()) { server.send(403,"text/plain","unauthorised"); return; }
+  if (receiving || complete || rebootAt || Update.isRunning()) {
+    server.send(409,"text/plain","OTA transaction active"); return;
+  }
+  if (server.args()!=3 || !server.hasArg("profile") ||
+      !server.hasArg("bench_sleep") || !server.hasArg("verbose")) {
+    server.send(400,"text/plain","expected profile, bench_sleep, verbose"); return;
+  }
+  const String profile=server.arg("profile");
+  const String sleep=server.arg("bench_sleep");
+  const String verbose=server.arg("verbose");
+  if ((profile!="BENCH" && profile!="FIELD") ||
+      (sleep!="0" && sleep!="1") || (verbose!="0" && verbose!="1")) {
+    server.send(400,"text/plain","invalid settings"); return;
+  }
+  mm::Settings next;
+  next.profile=profile=="BENCH"?mm::Profile::Bench:mm::Profile::Field;
+  next.benchSleep=sleep=="1";
+  next.verbose=verbose=="1";
+  if (!settingsSave(next)) {
+    server.send(503,"application/json",settingsJson()); return;
+  }
+  server.send(200,"application/json",settingsJson());
+}
+
 void startServer() {
   server.collectHeaders(HEADERS,3);
   server.on("/status",HTTP_GET,status);
+  server.on("/settings",HTTP_GET,getSettings);
+  server.on("/settings",HTTP_POST,setSettings);
   server.on("/ota",HTTP_POST,finishRequest,upload);
   server.onNotFound([](){ server.send(404,"text/plain","not found"); });
   server.begin();

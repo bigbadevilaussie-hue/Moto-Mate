@@ -197,3 +197,6 @@ V1.10 OTA bench implemented, compile and actual wireless update pending. See ota
 
 
 **V1.11 application foundation:** commissioning archived; OTA/Wi-Fi services extracted; real safe idle GPIO, button observation and ADC pin measurement. See [application-foundation.md](application-foundation.md). Compile, OTA and physical checks pending. No field operation.
+
+
+**V1.12:** Owner rule BENCH/FIELD is a persistent NVS profile, not an OTA variant. Settings foundation and authenticated read/write implemented; FIELD and bench sleep capability gates remain false pending real runtime. See [settings-design.md](settings-design.md). Compile and persistence verification pending.
