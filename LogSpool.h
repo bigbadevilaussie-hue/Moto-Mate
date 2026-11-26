@@ -15,3 +15,8 @@ bool createOpen(const Header&);
 bool appendOne(const Header&,size_t expectedRecords,const uint8_t record[RECORD_BYTES]);
 bool recoverOpen(Kind,uint64_t generation,uint64_t seq,Scan& result,Suffix& finalSuffix);
 } }
+
+namespace mm { namespace log {
+// Only for a qualified retained sleep checkpoint; validates complete open prefix and header.
+bool verifySleepOpen(const Header&,size_t count);
+} }

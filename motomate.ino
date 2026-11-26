@@ -47,6 +47,7 @@ void abortCountdown(const char* why) {
   benchMagic=0;
   benchCycle=0;
   priorAwakeUs=0;
+  storageSleepForget();
   Serial.printf("[SLEEP] CANCEL %s; maintenance recovery\n",why);
   hardwareCancelBenchSleep();
   sensorsResume();
@@ -115,6 +116,7 @@ void setup() {
   const bool requested=bench && mm::benchSleepActive(settingsCurrent());
   sleepLogEnabled=(continuing && benchMagic==BENCH_LOG_MAGIC) ||
     (requested && settingsCurrent().benchSleepLog && cause==ESP_SLEEP_WAKEUP_UNDEFINED);
+  if(!continuing || !sleepLogEnabled) storageSleepForget();
   bool consumed=!requested;
   if (requested) {
     auto next=settingsCurrent();
@@ -146,6 +148,7 @@ void setup() {
   benchMagic=0;
   benchCycle=0;
   priorAwakeUs=0;
+  storageSleepForget();
   if (requested || continuing) Serial.println("[SLEEP] CANCEL request clear, button or radio check failed");
   if (bench) displayBegin(cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON);
   storageBeginMaintenance();

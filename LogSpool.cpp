@@ -96,6 +96,16 @@ bool createOpen(const Header& h) {
   if(fd<0) return false;
   return finishWrite(fd,write(fd,b,sizeof(b))==sizeof(b)) && verifyRange(full,0,b,sizeof(b),sizeof(b));
 }
+bool verifySleepOpen(const Header& h,size_t count) {
+  if(h.kind!=1 || h.flags!=1 || !count || count>=MAX_RECORDS ||
+     !allAbsent(Kind::Monitor,h.generation,h.file_seq,true) ||
+     !allAbsent(Kind::Ride,h.generation,h.file_seq,false)) return false;
+  uint8_t b[HEADER_BYTES]; char rel[PATH_BYTES],full[FULL_BYTES];
+  if(!encodeHeader(h,b) || !filename(Kind::Monitor,h.generation,h.file_seq,Suffix::Open,rel) ||
+     !fullPath(rel,full) || !verifyRange(full,0,b,sizeof(b),HEADER_BYTES+count*RECORD_BYTES)) return false;
+  const Scan s=inspectFile(rel,full);
+  return s.classification==ScanClass::Complete && s.records==count;
+}
 bool appendOne(const Header& h,size_t count,const uint8_t* record) {
   uint8_t b[HEADER_BYTES]; char rel[PATH_BYTES],full[FULL_BYTES];
   const Kind k=static_cast<Kind>(h.kind);
