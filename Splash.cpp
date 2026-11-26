@@ -29,17 +29,22 @@ const char* modeLabel(SplashMode mode) {
   return "UNKNOWN MODE";
 }
 
-// Fit whole strings rather than clipping them at the edges.
-bool centered(lgfx::LGFXBase& t, const char* text, int y,
-              float preferred, int maxWidth) {
+// Use native-size proportional glyphs, not enlarged 5x7 pixel text.
+// Fit each string into its own reserved region without touching the artwork.
+bool centered(lgfx::LGFXBase& t, const char* text, int top, int bottom,
+              int maxWidth, const lgfx::IFont* preferred,
+              const lgfx::IFont* fallback = &lgfx::fonts::DejaVu12) {
+  if (top < 0 || bottom > t.height() || top >= bottom) return false;
   t.setTextDatum(lgfx::textdatum_t::top_left);
-  t.setFont(&lgfx::fonts::Font0);
   t.setTextColor(WHITE);
-  t.setTextSize(preferred);
-  if (t.textWidth(text) > maxWidth) t.setTextSize(1);
+  t.setTextSize(1);
+  t.setFont(preferred);
+  if (t.textWidth(text) > maxWidth || t.fontHeight() > bottom-top)
+    t.setFont(fallback);
   const int w = t.textWidth(text);
-  if (w > maxWidth || y < 0 || y + t.fontHeight() > t.height()) return false;
-  t.drawString(text, (160 - w) / 2, y);
+  const int h = t.fontHeight();
+  if (w > maxWidth || h > bottom-top) return false;
+  t.drawString(text, (160-w)/2, top+(bottom-top-h)/2);
   return true;
 }
 } // namespace
@@ -49,7 +54,7 @@ bool drawSplash(lgfx::LGFXBase& t, SplashMode mode, const char* detail,
   if (t.width() != 160 || t.height() != 128) return false;
   bool ok = drawBackground(t);
   if (mode == SplashMode::BatteryCheck) {
-    ok &= centered(t, modeLabel(mode), 44, 1.5f, 148);
+    ok &= centered(t, modeLabel(mode), 43, 61, 148, &lgfx::fonts::DejaVu12);
     char v[24], temp[24];
     if (std::isfinite(voltage))
       snprintf(v, sizeof(v), "%.2f V", static_cast<double>(voltage));
@@ -59,12 +64,12 @@ bool drawSplash(lgfx::LGFXBase& t, SplashMode mode, const char* detail,
       snprintf(temp, sizeof(temp), "%.1f C", static_cast<double>(temperatureC));
     else
       snprintf(temp, sizeof(temp), "-- C");
-    ok &= centered(t, v, 61, 3, 148);
-    ok &= centered(t, temp, 91, 2, 148);
+    ok &= centered(t, v, 61, 91, 148, &lgfx::fonts::FreeSansBold12pt7b, &lgfx::fonts::FreeSansBold9pt7b);
+    ok &= centered(t, temp, 91, 110, 148, &lgfx::fonts::FreeSansBold9pt7b);
   } else {
-    ok &= centered(t, modeLabel(mode), 58, 1.5f, 148);
-    if (detail && *detail) ok &= centered(t, detail, 84, 1.5f, 148);
+    ok &= centered(t, modeLabel(mode), 48, 81, 148, &lgfx::fonts::FreeSansBold9pt7b);
+    if (detail && *detail) ok &= centered(t, detail, 81, 109, 148, &lgfx::fonts::DejaVu12, &lgfx::fonts::DejaVu9);
   }
-  ok &= centered(t, "VER " MOTO_MATE_VERSION, 113, 1, 68);
+  ok &= centered(t, "VER " MOTO_MATE_VERSION, 110, 128, 68, &lgfx::fonts::DejaVu9);
   return ok;
 }

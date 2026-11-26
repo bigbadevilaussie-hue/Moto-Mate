@@ -11,3 +11,7 @@ Existing seven-mode renderer remains; only Initialising and Maintenance are wire
 ## V1.14 colour-order correction
 
 V1.13 owner compile PASS (817849 B flash, 46720 B static RAM); OTA V1.10 app1/4c134540 to V1.13 app0/5263863f PASS; NVS initialised BENCH, Wi-Fi recovered. After wiring correction, physical RGB frames and logo visible, but red displayed blue. Change only panel rgb_order false to true and bump version. V1.14 compile/OTA/visual colour verification pending. Border/offsets/orientation and BL current not yet qualified. Leave BL disconnected; no wiring, Wi-Fi or OTA changes.
+
+## V1.15 typography
+
+Owner confirmed V1.14 corrected physical colours and maintenance splash visible. Replaced scaled Font0 splash text with proportional FreeSansBold / DejaVu fonts from LovyanGFX 1.2.36. Fit checks cover both width and reserved vertical regions, with smaller native-font fallback; existing artwork, RGB order, display pins, Wi-Fi/OTA unchanged. V1.15 compile and visual acceptance pending. BL remains unqualified/disconnected.
