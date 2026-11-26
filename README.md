@@ -263,3 +263,6 @@ See [OTA commissioning](ota-commissioning.md). First USB flash then wireless slo
 
 
 **AGREED owner rule (2026-11-26): fixed parked cadence, 300 seconds actual deep sleep and at most 10 seconds awake, returning sooner when work is complete. No peak/off-peak, time-of-day, timezone or DST-dependent wake intervals. UTC timestamps are evidence; elapsed-time scheduling is independent of civil time. Retire the legacy 04:00 wall-clock collection trigger; retain elevated 24-hour collection as elapsed-time due work, retry pending delivery on eligible wakes, mark completion only after verified acknowledgement. Ride, explicit maintenance, protection and safe transaction completion remain distinct exceptions. No adjustable parked cadence in NVS.**
+
+
+**V1.13 physical TFT BENCH:** actual ST7735S initialization, RGB/white-border visual check, then selected artwork splash with dynamic mode/version; GPIO4 backlight remains off/unqualified. No Wi-Fi/OTA or FIELD changes. Build and physical confirmation pending. See [assets/display/README.md](assets/display/README.md).

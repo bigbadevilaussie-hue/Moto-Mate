@@ -4,6 +4,7 @@
 #include "WifiManager.h"
 #include "OtaService.h"
 #include "Settings.h"
+#include "Display.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <freertos/FreeRTOS.h>
@@ -25,6 +26,7 @@ void setup() {
   settingsBegin();
   diagnosticSchedule.start(nowUs());
   otaInit();
+  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) displayBegin();
   wifiBegin();
 }
 
@@ -49,5 +51,6 @@ void loop() {
       if (nowUs()>=retryAt) { wifiBegin(); activity=Activity::Connecting; }
       break;
   }
+  displayPoll(activity==Activity::Maintenance ? SplashMode::Maintenance : SplashMode::Initialising);
   vTaskDelay(1);
 }
