@@ -97,73 +97,6 @@ def metric(title, initial, detail):
 
 
 class Dashboard(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle(f"Moto-Mate • Arctic Edition • GUI {GUI_VERSION}")
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
-        self.setMinimumSize(760, 500)
-        self.resize(940, 640)
-        self.values = {}
-        self.errors = {}
-        self.post_pending = False
-        self.client = OsaClient(self)
-        self.client.received.connect(self.update_value)
-        self.client.failed.connect(self.update_error)
-        root = QWidget()
-        self.setCentralWidget(root)
-        outer = QVBoxLayout(root)
-        outer.setContentsMargins(10, 8, 10, 4)
-        outer.setSpacing(0)
-        row = QHBoxLayout()
-        row.setSpacing(10)
-        outer.addLayout(row, 1)
-        sidebar = QFrame()
-        sidebar.setObjectName("sidebar")
-        sidebar.setFixedWidth(180)
-        nav = QVBoxLayout(sidebar)
-        nav.setContentsMargins(10, 14, 10, 12)
-        nav.setSpacing(6)
-        nav.addWidget(label("MOTO·MATE", "brand"))
-        nav.addWidget(label("BATTERY FIRST  /  QT6", "muted"))
-        nav.addSpacing(10)
-        self.pages = QStackedWidget()
-        self.buttons = []
-        for title, make in (("Overview", self.overview), ("Log collection", self.collection),
-                            ("Dyna Ride", self.dyna_ride), ("Dyna Tune", self.dyna_tune),
-                            ("Battery budget", self.energy), ("Engineering", self.engineering)):
-            index = self.pages.count()
-            button = QPushButton(title)
-            button.setObjectName("nav")
-            button.setCheckable(True)
-            button.clicked.connect(lambda checked=False, i=index: self.select(i))
-            self.buttons.append(button)
-            nav.addWidget(button)
-            page = make()
-            scroll = QScrollArea()
-            scroll.setWidgetResizable(True)
-            scroll.setFrameShape(QFrame.Shape.NoFrame)
-            scroll.setWidget(page)
-            self.pages.addWidget(scroll)
-        nav.addStretch()
-        self.host = label("Connecting to OSA…", "section")
-        nav.addWidget(self.host)
-        nav.addWidget(label("Local cache • no direct radio", "muted"))
-        row.addWidget(sidebar)
-        row.addWidget(self.pages, 1)
-        grip = QSizeGrip(root)
-        grip.setFixedSize(16, 16)
-        outer.addWidget(grip, 0, Qt.AlignmentFlag.AlignRight)
-        self.select(0)
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.client.poll)
-        self.timer.start(5000)
-        QTimer.singleShot(0, self.client.poll)
-
-    def select(self, index):
-        self.pages.setCurrentIndex(index)
-        for i, button in enumerate(self.buttons):
-            button.setChecked(i == index)
-
     def page(self, title, sub):
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -344,7 +277,8 @@ def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Moto-Mate")
     apply_arctic_theme(app)
-    window = Dashboard()
+    from .qt_instrument import Instrument
+    window = Instrument()
     screen = window.screen().availableGeometry()
     window.resize(min(window.width(), screen.width()), min(window.height(), screen.height()))
     window.move(screen.center() - window.rect().center())
