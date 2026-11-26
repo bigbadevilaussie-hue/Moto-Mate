@@ -1,6 +1,6 @@
 # Moto-Mate — AI Handover
 
-**V1.07 B1 BLE commissioning committed; compile/upload and Mac handshake pending.** See [ble-commissioning.md](ble-commissioning.md). V1.06 is last verified baseline. OSA V1.40 matching bench contract required.
+**V1.07 B1 BLE commissioning owner bench PASS; field commissioning pending.** See [ble-commissioning.md](ble-commissioning.md). V1.06 is the pre-BLE verified baseline. OSA V1.40 matching bench contract required.
 
 ## Owner rule: Moto-Mate governs OSA
 
@@ -172,3 +172,8 @@ Architecture: ESP32-S3 <-- BLE --> OSA <-- HTTP --> GUI. OSA caches telemetry, s
 5. Report actual results and update this document when project decisions change.
 
 Current next action: owner compiles V1.04 on locked toolchain and checks expected bench serial states when hardware is available. Then implement safe GPIO/sleep lifecycle and early button service in separately tested patches. Fresh coordinator approved; integrate proven donor functions into it, do not transplant donor setup/loop. No fabrication, final hardware selection, protected changes or production deployment implied.
+
+
+## Owner bench validation — 2026-11-26
+
+V1.07 firmware (01010ab) / OSA V1.40 (340ee9b): owner reported Python compile and 10/10 unit tests PASS, LaunchAgent restart, Arduino ESP32 core 2.0.17 compile 1,554,949/1,966,080 bytes flash (411,131 remaining), static RAM 67,780/327,680 bytes, upload 1,555,312 bytes verified by hash. Initial Wi-Fi 1,056 ms, Opal Date clock and Wi-Fi OFF PASS. S3 BLE init 221 ms; first connection at 760 ms, session 517 ms; second at 2,087 ms, session 484 ms; two local sessions and controller/host stack shutdown PASS at 3,028 ms. Wi-Fi recovery 1,043 ms and final Opal clock/Wi-Fi OFF PASS. OSA phase passed, error null, disconnected, same boot ID MMB1/1.07/0fd96088 both sessions; discovery 29,801 ms (includes pre-advertising wait during upload/boot) and 88 ms; connect 623/547 ms; exact challenge notification 30/36 ms; clock write and readback 50/50 ms; applied and actual epoch match requested 1795652966/1795652968; host difference -1/0 s (integer-second sampling, not long-term drift); second full host cycle 793 ms. One loop service overrun (375,248 us, max gap 376,001 us), phase not yet isolated. First monitoring report awake 14,213,438 us, includes 3 s USB settle and commissioning overhead; not a field wake measurement. BENCH end-to-end BLE/OSA and Wi-Fi recovery verified on this run. Still pending repeated reliability, field 300 s deep sleep / <10 s wake, current/energy measurements, clock holdover, physical TFT/sensors, real file transfer and other-device live regression. No production changes or version bump in this validation record.
