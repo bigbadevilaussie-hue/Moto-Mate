@@ -7,6 +7,7 @@
 #include "Display.h"
 #include "MotoClock.h"
 #include "Rtc8563.h"
+#include "BenchSensors.h"
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -43,6 +44,7 @@ void abortCountdown(const char* why) {
   priorAwakeUs=0;
   Serial.printf("[SLEEP] CANCEL %s; maintenance recovery\n",why);
   hardwareCancelBenchSleep();
+  sensorsResume();
 
   activity=Activity::Connecting;
   wifiBegin();
@@ -51,6 +53,7 @@ void countdownPoll() {
   const auto now=nowUs();
   if (digitalRead(WAKE_BTN_PIN)==LOW) { abortCountdown("button held"); return; }
   if (now>=countdownEnd) {
+    if (!sensorsQuiesce()) { abortCountdown("MPU sleep unverified"); return; }
     if (!displaySleepCountdown(0)) { abortCountdown("display unavailable"); return; }
     if (!radiosOff() || !hardwareArmBenchSleep()) { abortCountdown("arm failed"); return; }
     if (!hardwareButtonReleased(nowUs()) || nowUs()>mm::BENCH_AWAKE_US+1000000ULL) {
@@ -68,6 +71,7 @@ void countdownPoll() {
     displayPoll(SplashMode::BenchAwake);
     return;
   }
+  if (!sensorsQuiesce()) { abortCountdown("MPU sleep unverified"); return; }
   const unsigned seconds=unsigned((countdownEnd-now+999999ULL)/1000000ULL);
   if (seconds!=shown) {
     shown=seconds;
@@ -85,7 +89,10 @@ void setup() {
   hardwareReportBoot();
   settingsBegin();
   clockBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
-  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) rtc8563Begin();
+  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) {
+    rtc8563Begin();
+    sensorsBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
+  }
   diagnosticSchedule.start(nowUs());
   otaInit();
   const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
@@ -130,6 +137,7 @@ void setup() {
 void loop() {
   if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
   hardwarePoll(nowUs());
+  if (activity!=Activity::BenchCountdown || nowUs()+5000000ULL<countdownEnd) sensorsPoll(nowUs());
   if (settingsHealthy() && mm::verboseActive(settingsCurrent()) && diagnosticSchedule.due(nowUs())) {
     Serial.printf("[DIAG] uptime_us=%llu%s\n",(unsigned long long)nowUs(),hardwareStatus().c_str());
   }

@@ -15,6 +15,33 @@ SAVE THE BATTERY AT ALL COSTS. Clean, optimised direct port; preserve proven beh
 
 Phase 1: breadboard ESP32 + TFT on USB-C to iMac, sensors as required and bench PSU to simulate bike voltage through reviewed ADC divider. BENCH mode. Owner target approximately 90% of code testing before locking circuit; not measured coverage. USB-powered bench cannot prove total 12 V battery input current or crank brownout immunity. Phase 2: lock circuit only after owner approval, then owner builds stripboard and tests production power/hardware. On-bike validation is a proposed later gate, not an authorised installation. Hardware/RTC/power design remains open.
 
+## Live completion checklist (V1.23)
+
+Only checked items are accepted at their explicitly stated scope; full stages remain open until all acceptance criteria pass. PRIME DIRECTIVE: FIELD 300 s actual sleep, <=10 s necessary awake, immediate sleep when safe, no routine display/radio overhead. Not yet integrated.
+
+- [x] 0 — Physical TFT baseline (V1.16 owner accepted); full lifecycle stage 9 separate.
+- [ ] 1 — Coordinator: loop operational; production state integration and timing pending.
+- [ ] 2 — Power/sleep: timer + physical EXT0 wake verified V1.19; current, exact duration and FIELD pending.
+- [ ] 3 — Button: debounce/held/release and wake verified; gestures pending.
+- [ ] 4 — Clock: V1.21/22 host sync, NVS and absent RTC verified; drift and physical RTC pending.
+- [ ] 5 — Settings: NVS BENCH profile/OTA persistence verified; production settings coverage pending.
+- [ ] 6 — Diagnostics: serial/status foundation; durable bounded diagnostics pending.
+- [ ] 7 — Sensors: V1.23 commissioning slice; ADC qualification and physical SHT40/MPU tests pending.
+- [ ] 8 — Buzzer.
+- [ ] 9 — Display lifecycle/backlight.
+- [ ] 10 — Wake logs/storage.
+- [ ] 11 — BLE/OSA: archived commissioning proven, production integration pending.
+- [ ] 12 — Wi-Fi: BENCH OTA path proven, production coexistence/power pending.
+- [ ] 13 — HTTP/OTA: bench slot switch proven, full compatibility/failure tests pending.
+- [ ] 14 — Maintenance session.
+- [ ] 15 — GPS.
+- [ ] 16 — Ride logs.
+- [ ] 17 — Upload.
+- [ ] 18 — Alerts.
+- [ ] 19 — State integration / PRIME DIRECTIVE.
+- [ ] 20 — GUI/host.
+- [ ] 21 — Regression and cleanup.
+
 ## Current checkpoint
 
 **Current checkpoint — 2026-11-26: V1.16 owner BENCH runtime confirmed.** V1.13 compiled 817849 B flash / 46720 B static RAM; verified different-version OTA V1.10 app1 to V1.13 app0 and NVS initialisation. Physical TFT wiring corrected; V1.14 RGB/BGR correction accepted, logo visible. V1.15 typography owner-tested; V1.16 animated splash accepted, serial confirms two complete startups, temporary sprite released, NVS loaded, Wi-Fi connected in 1037/1071 ms and OTA ready, maintenance mode rendered. Reason for second boot not established. BL remains disconnected/unqualified; panel stays illuminated on bench. No measured heap low-water, full-system current, physical button wake, sensor or field validation. Current physical TFT is on the USB breadboard; reconnect momentary switch after rewiring (GPIO13 to GND).
@@ -87,3 +114,8 @@ Every firmware patch: scoped change, version bump, owner compile, specific expec
 
 
 **V1.22 external RTC commissioning (owner requested preload):** PCF8563 optional driver compiled in with Config.h flags RTC_PCF8563_ENABLED=1 and RTC_WRITE_ON_HOST_SYNC=1. Uses locked Arduino ESP32 core 2.0.17 Wire API, shared GPIO6 SDA/GPIO7 SCL at 100 kHz, 25 ms transaction timeout, address 0x51. BENCH only bus initialization; optional device probe, one contiguous register read, voltage-low/STOP/test-mode, BCD/date/weekday and range validation. Absent or failed RTC never prevents maintenance, never substitutes a trusted timestamp. Explicit authenticated host sync also sets the RTC if present; readback separately reported. GET /clock and /status clock.external_rtc expose live calendar and signed RTC-minus-system difference (whole-second granularity; bus delay included). No source selection, wake alarm, external clock hardware commitment, or periodic writes. Reference NXP PCF8563 register descriptions: https://docs.nxp.com/bundle/PCF8563/page/topics/setting_and_reading_the_time.html and control registers. SDA/SCL pull-ups must be to 3.3 V, module supply and backup cell circuit verified before connecting. No protected radio, sleep timing or OTA transfer changes. Tests added; Arduino build, absent-device behavior, physical RTC sync/readback and drift still pending. V1.21 not separately owner validated.
+
+
+**V1.22 owner validation:** V1.21 OTA app1 boot c3836bf3, host sync and NVS readback PASS; estimated offset -13.762 ms, RTT 15.287 ms. V1.22 compiled 873793 B flash, 47660 B static RAM, OTA app0 f06582a1, I2C ready, PCF8563 absent, NVS checkpoint loaded, platform clock survived software reset but marked unknown, host correction -284183 us and no unnecessary checkpoint write. Drift not established. Physical RTC pending.
+
+**V1.23 early stage 7 commissioning:** ADAPT donor sensor interface, retain actual ADC millivolt observation, REBUILD NTC and default fake voltage/temperature with independent SHT40 and MPU6050 optional drivers. Shared Wire owner, config addresses 0x44/0x68, 100 kHz, 25 ms transaction timeout. SHT40 nonblocking conversion interval with CRC and validity; MPU identity and configuration readback, 10 Hz BENCH samples, 5 s failed-device retry, gravity/gyro magnitude and conservative stationary reference learning retained in RTC RAM. Reference adapts only within a small stable envelope; large stable orientation changes require reset/recalibration (not automatically learned away). Diagnostic only, no motion/lean/ride decisions. Sample age invalidation; null for unknown values. No fake voltage or temperature. Quiesce MPU with verified sleep in final 5 s of BENCH awake; cancel sleep if a previously configured MPU cannot be verified asleep. No INT wake or continuous parked sampling. Wire remains initialized during ESP sleep; current unmeasured. No FIELD enable, protected radio edits or OTA transfer changes. Clock drift and hardware qualification remain open. No local native or Arduino build claimed. Owner may attach sensors later after verifying supply/pullups. 

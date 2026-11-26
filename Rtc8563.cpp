@@ -1,7 +1,7 @@
 #include "Rtc8563.h"
 #include "RtcPolicy.h"
 #include "Config.h"
-#include <Wire.h>
+#include "I2cBus.h"
 #include <esp_timer.h>
 
 namespace {
@@ -14,31 +14,18 @@ const char* state="disabled";
 const char* writeState="not_requested";
 constexpr uint8_t ADDRESS=RTC_PCF8563_ADDRESS;
 bool readRegs(uint8_t reg,uint8_t* data,size_t n) {
-  Wire.beginTransmission(ADDRESS);
-  Wire.write(reg);
-  if (Wire.endTransmission(false)!=0) return false;
-  if (Wire.requestFrom(ADDRESS,n,true)!=n) {
-    while (Wire.available()) Wire.read();
-    return false;
-  }
-  for (size_t i=0;i<n;++i) {
-    const int v=Wire.read();
-    if (v<0) return false;
-    data[i]=uint8_t(v);
-  }
-  return true;
+  return i2cReadRegs(ADDRESS,reg,data,n);
 }
 bool writeRegs(uint8_t reg,const uint8_t* data,size_t n) {
-  Wire.beginTransmission(ADDRESS);
-  const bool queued=Wire.write(reg)==1 && Wire.write(data,n)==n;
-  const uint8_t result=Wire.endTransmission(true);
-  return queued && result==0;
+  uint8_t b[8]={reg};
+  if (n>7) return false;
+  for (size_t i=0;i<n;++i) b[i+1]=data[i];
+  return i2cWrite(ADDRESS,b,n+1);
 }
 bool sample() {
   rtcUtc=0; lowVoltage=false; stopped=false; present=false;
   if (!busReady) return false;
-  Wire.beginTransmission(ADDRESS);
-  const uint8_t result=Wire.endTransmission(true);
+  const uint8_t result=i2cProbe(ADDRESS);
   if (result!=0) { state=result==2?"absent":"probe_error"; return false; }
   present=true;
   uint8_t b[9]={};
@@ -56,11 +43,9 @@ bool sample() {
 }
 void rtc8563Begin() {
 #if RTC_PCF8563_ENABLED
-  busReady=Wire.begin(I2C_SDA_PIN,I2C_SCL_PIN,I2C_BUS_HZ);
-  if (busReady) {
-    Wire.setTimeOut(I2C_TIMEOUT_MS);
-    sample();
-  } else state="bus_init_failed";
+  busReady=i2cBegin();
+  if (busReady) sample();
+  else state="bus_init_failed";
   Serial.printf("[RTC] PCF8563 addr=0x%02X SDA=%d SCL=%d state=%s utc_us=%llu\n",
     unsigned(ADDRESS),I2C_SDA_PIN,I2C_SCL_PIN,state,(unsigned long long)rtcUtc);
 #else
