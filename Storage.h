@@ -40,3 +40,7 @@ void storageSleepForget();
 // Only called after entering existing BENCH maintenance, never on normal sleep wakes.
 void storageRecoverMaintenance();
 bool storageInventory(String& result);
+
+// Default autonomous BENCH monitor; separate from explicit legacy commissioning.
+void storageAutoBegin(bool enabled,bool retainedWake);
+void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance);
