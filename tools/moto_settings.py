@@ -14,7 +14,10 @@ def main():
     p.add_argument("--profile", choices=("BENCH", "FIELD"))
     p.add_argument("--bench-sleep", choices=("0", "1"))
     p.add_argument("--verbose", choices=("0", "1"))
+    p.add_argument("--fake-adc-mv", type=int, choices=None, metavar="MV", help="BENCH simulator voltage in mV (0..20000)")
     a = p.parse_args()
+    if a.fake_adc_mv is not None and not 0 <= a.fake_adc_mv <= 20000:
+        p.error("--fake-adc-mv must be 0..20000")
     path = Path(__file__).resolve().parents[1] / "Ota.local.h"
     match = re.search(r'^#define MOTO_OTA_KEY "([a-f0-9]{64})"$', path.read_text(), re.M)
     if not match:
@@ -44,6 +47,12 @@ def main():
             print("PASS: persisted settings readback")
         else:
             after = before
+        if a.fake_adc_mv is not None:
+            result = request(urllib.parse.urlencode({"fake_adc_mv": a.fake_adc_mv}).encode("ascii"))
+            after = request()
+            if result.get("fake_adc_mv") != a.fake_adc_mv or after.get("fake_adc_mv") != a.fake_adc_mv:
+                raise SystemExit("Fake ADC readback FAILED")
+            print("PASS: persisted fake ADC readback")
         print(json.dumps(after, indent=2))
         if after["effective_profile"] == "RECOVERY" or (after["bench_sleep"] and not after["bench_sleep_active"]):
             print("Requested settings saved but runtime capability is not enabled.")
