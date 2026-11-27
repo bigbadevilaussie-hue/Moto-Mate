@@ -37,6 +37,36 @@ struct MonitorSession {
   const char* state="idle";
 } monitor;
 RTC_DATA_ATTR uint8_t sleepCheckpoint[mm::log::SLEEP_CHECKPOINT_BYTES]={};
+constexpr unsigned AUTO_BATCH=96;
+RTC_DATA_ATTR uint8_t autoCheckpoint[mm::log::SLEEP_CHECKPOINT_BYTES]={};
+bool autoEnabled=false;
+uint64_t autoDue=3000000ULL;
+const char* autoState="disabled";
+void forgetAuto() { memset(autoCheckpoint,0,sizeof(autoCheckpoint)); }
+bool autoHeader(mm::log::Header& h,unsigned& count) {
+  using namespace mm::log;
+  uint8_t mac[6]={};
+  return decodeSleepCheckpoint(autoCheckpoint,sizeof(autoCheckpoint),h,count,AUTO_BATCH) &&
+    !strcmp(logIdState,"valid") && h.generation==logId.generation &&
+    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==47 &&
+    esp_efuse_mac_get_default(mac)==ESP_OK && !memcmp(mac,h.device_mac,6) &&
+    verifySleepOpen(h,count);
+}
+bool sealAuto(const mm::log::Header& h,unsigned count) {
+  using namespace mm::log;
+  Scan scan={}; Suffix suffix=Suffix::Open;
+  return recoverOpen(Kind::Monitor,h.generation,h.file_seq,scan,suffix) &&
+    scan.classification==ScanClass::Complete && scan.records==count && suffix==Suffix::Bin;
+}
+void closeAutoForMaintenance() {
+  if(!autoCheckpoint[0]) return;
+  mm::log::Header h={}; unsigned count=0;
+  const bool valid=autoHeader(h,count);
+  forgetAuto(); // never reuse an uncertain checkpoint
+  const bool ok=valid && sealAuto(h,count);
+  autoState=ok?"sealed":"seal_failed_preserved";
+  Serial.printf("[MONITOR] maintenance seal=%s records=%u\n",autoState,count);
+}
 void refreshSpace() {
   if(!mounted) return;
   const uint64_t start=esp_timer_get_time();
@@ -66,7 +96,7 @@ void storageBeginMaintenance() {
   if (attempted) return;
   attempted=true;
   refreshIdentity();
-  Serial.printf("[LOG] schema=1 identity=%s writes=disabled\n",logIdState);
+  Serial.printf("[LOG] schema=1 identity=%s autonomous=%s\n",logIdState,autoEnabled?"enabled":"disabled");
   const auto* p=esp_partition_find_first(ESP_PARTITION_TYPE_DATA,ESP_PARTITION_SUBTYPE_DATA_SPIFFS,"spiffs");
   partitionBytes=p?p->size:0;
   flashBytes=ESP.getFlashChipSize();
@@ -104,8 +134,8 @@ String storageLogIdentityJson() {
   }
   if(cursor) snprintf(nextText,sizeof(nextText),"\"%016llx\"",(unsigned long long)next);
   if(macOK) snprintf(macText,sizeof(macText),"\"%02x%02x%02x%02x%02x%02x\"",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
-  snprintf(b,sizeof(b),"{\"state\":\"%s\",\"device_mac\":%s,\"generation\":%s,\"reserved_through\":%s,\"next_reserved\":%s,\"filesystem_mounted\":%s,\"log_writes_enabled\":false}",
-    logIdState,macText,generation,high,nextText,mounted?"true":"false");
+  snprintf(b,sizeof(b),"{\"state\":\"%s\",\"device_mac\":%s,\"generation\":%s,\"reserved_through\":%s,\"next_reserved\":%s,\"filesystem_mounted\":%s,\"log_writes_enabled\":%s}",
+    logIdState,macText,generation,high,nextText,mounted?"true":"false",autoEnabled && mounted && valid?"true":"false");
   return String(b);
 }
 bool storageProvisionLogIdentity(uint64_t generation) {
@@ -350,12 +380,61 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
     (unsigned long long)(esp_timer_get_time()-start));
   return ok;
 }
+void storageAutoBegin(bool enabled,bool retainedWake) {
+  autoEnabled=enabled;
+  autoState=enabled?"waiting":"disabled";
+  autoDue=3000000ULL;
+  if(!enabled || !retainedWake) forgetAuto();
+}
+void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
+  using namespace mm::log;
+  if(!autoEnabled || now<autoDue || monitor.active) return;
+  // No catch-up bursts; one sample per ordinary BENCH wake, then 300s if awake.
+  autoDue=now+MONITOR_PERIOD_US;
+  const uint64_t start=esp_timer_get_time();
+  Sample sample={}; Prefix p={};
+  p.boot_id=bootId; p.mono_ms=uint32_t(now/1000); p.type=1;
+  p.state=maintenance?0x46:0x41;
+  p.utc_ms=clockLogUtcMs(p.validity);
+  sensorsLogSample(now,sample,p.validity);
+  // ADC remains an unqualified rail estimate, battery validity stays clear.
+  storageBeginMaintenance();
+  Header h={}; unsigned count=0;
+  bool ok=mounted && storageSleepLogReady(logId.generation);
+  const bool hadCheckpoint=autoCheckpoint[0]!=0;
+  if(ok && hadCheckpoint) ok=autoHeader(h,count);
+  forgetAuto(); // consume before mutation
+  if(ok && !hadCheckpoint) {
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=47;
+    h.generation=logId.generation; h.nominal_period_ms=300000;
+    h.opened_boot_id=bootId; h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
+    ok=esp_efuse_mac_get_default(h.device_mac)==ESP_OK;
+  }
+  uint8_t record[RECORD_BYTES];
+  if(ok) ok=encode(p,sample,record);
+  if(ok && !count) {
+    ok=allocateSequence(h.generation,h.file_seq);
+    refreshIdentity();
+    if(ok) ok=benchIdentityAbsent(h.generation,h.file_seq) && createOpen(h);
+  }
+  if(ok) ok=appendOne(h,count,record);
+  if(ok) ++count;
+  const bool seal=maintenance || count>=AUTO_BATCH;
+  if(ok) ok=seal?sealAuto(h,count):encodeSleepCheckpoint(h,count,autoCheckpoint,AUTO_BATCH);
+  if(!ok) forgetAuto();
+  autoState=ok?(seal?"sealed":"committed_open"):"failed_preserved";
+  if(mounted) refreshSpace();
+  Serial.printf("[MONITOR] %s seq=%016llx records=%u validity=%04x elapsed_us=%llu; sleep policy unchanged\n",
+    autoState,(unsigned long long)h.file_seq,count,unsigned(p.validity),
+    (unsigned long long)(esp_timer_get_time()-start));
+}
 void storageRecoverMaintenance() {
   using namespace mm::log;
   static bool done=false;
   if(done || !mounted || monitor.active) return;
   done=true;
   refreshIdentity();
+  closeAutoForMaintenance();
   uint8_t mac[6]={};
   if(strcmp(logIdState,"valid") || esp_efuse_mac_get_default(mac)!=ESP_OK) return;
   DIR* d=opendir("/littlefs");
@@ -446,7 +525,9 @@ String storageJson() {
   String out(b);
   out.remove(out.length()-1);
   out+=",\"log_schema\":1,\"log_identity\":\""; out+=logIdState;
-  out+="\",\"log_writes_enabled\":false,\"bench_monitor\":"; out+=storageMonitorJson(); out+="}";
+  out+="\",\"log_writes_enabled\":"; out+=(autoEnabled && mounted && !strcmp(logIdState,"valid"))?"true":"false";
+  out+=",\"auto_monitor\":{\"enabled\":"; out+=autoEnabled?"true":"false";
+  out+=",\"state\":\""; out+=autoState; out+="\"},\"bench_monitor\":"; out+=storageMonitorJson(); out+="}";
   return out;
 }
 void resourcesObserveLoop(uint64_t now) {
