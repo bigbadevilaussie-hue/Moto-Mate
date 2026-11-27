@@ -49,7 +49,7 @@ bool autoHeader(mm::log::Header& h,unsigned& count) {
   uint8_t mac[6]={};
   return decodeSleepCheckpoint(autoCheckpoint,sizeof(autoCheckpoint),h,count,AUTO_BATCH) &&
     !strcmp(logIdState,"valid") && h.generation==logId.generation &&
-    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==48 &&
+    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==49 &&
     esp_efuse_mac_get_default(mac)==ESP_OK && !memcmp(mac,h.device_mac,6) &&
     verifySleepOpen(h,count);
 }
@@ -275,7 +275,7 @@ bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count) {
   if(strcmp(logIdState,"valid") || generation!=logId.generation || usedBytes>totalBytes ||
      totalBytes-usedBytes<=16384+4096) return false;
   MonitorSession next;
-  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=48;
+  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=49;
   if(esp_efuse_mac_get_default(next.header.device_mac)!=ESP_OK) return false;
   next.header.generation=generation; next.header.opened_boot_id=bootId; next.header.nominal_period_ms=300000;
   next.target=count; next.active=true; next.state="sampling";
@@ -348,11 +348,11 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
   if(ok) ok=esp_efuse_mac_get_default(mac)==ESP_OK;
   if(ok && cycle>1) {
     ok=resumed && count==cycle-1 && h.generation==logId.generation &&
-       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==48 &&
+       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==49 &&
        !memcmp(mac,h.device_mac,6) && verifySleepOpen(h,count);
   }
   if(ok && cycle==1) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=48;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=49;
     memcpy(h.device_mac,mac,6); h.generation=logId.generation;
     h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   }
@@ -402,7 +402,7 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   p.state=maintenance?0x46:0x41;
   p.utc_ms=clockLogUtcMs(p.validity);
   sensorsLogSample(now,sample,p.validity);
-  // V1.48 automatic BENCH files exclusively carry the synthetic fixture voltage.
+  // V1.49 automatic BENCH files exclusively carry the synthetic fixture voltage.
   // Physical ADC values never enter this stream; real T/H retain their validity.
   uint16_t fakeMv=0;
   if (hardwareSyntheticVoltage(fakeMv)) {
@@ -416,7 +416,7 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   if(ok && hadCheckpoint) ok=autoHeader(h,count);
   forgetAuto(); // consume before mutation
   if(ok && !hadCheckpoint) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=48;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=49;
     h.generation=logId.generation; h.nominal_period_ms=300000;
     h.opened_boot_id=bootId; h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
     ok=esp_efuse_mac_get_default(h.device_mac)==ESP_OK;
