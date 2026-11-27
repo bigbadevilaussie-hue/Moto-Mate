@@ -1,5 +1,10 @@
 # Moto-Mate — dependency-ordered port plan
 
+## V1.38 owner autonomous BENCH runtime PASS — 2026-11-27
+
+Owner serial confirms OTA accepted 1544848 B then RTC_SW_CPU_RST and V1.38 boot, NVS loaded schema2 BENCH, no routine Wi-Fi. Three repeating normal cycles, BLE identities 6382e274 / 85aa9e6f / 36a99633, startup251/237/238 ms, verified BLE shutdown PASS all three, MPU absent quiesce, countdown5..1, pre-sleep30006465/30006797/30006797 us (cycle2 confirmed by retained prior on cycle3), timer30000ms and GPIO13 active-low EXT0 armed. First two subsequent wake/continuation sequences confirmed; third sleep entry reported. No BLE client connection evidence yet, no actual elapsed sleep measurement, no physical maintenance lease expiry test, no sensors attached at this checkpoint. Owner reports screen flicker; V1.39 fix already staged, not yet deployed. Keep FIELD disabled. OSA1.45 host regression/deployment pending. Owner plans MPU6050/SHT40 attachment after lunch. No firmware changes in evidence checkpoint.
+
+
 ## V1.39 — TFT flicker fix (2026-11-27)
 
 Owner reports terrible BENCH display flicker on V1.38. Source confirms full-screen black clear and redraw every one-second tick; this is the identified software cause, physical verification pending. Display.cpp now draws static BENCH heading only on entry and updates changed formatted readings/countdown using a reusable 160x33 RGB565 strip (10560 bytes pixel storage plus overhead). Compose offscreen then push completed row; no periodic whole-screen clear. Same strip buffers sleep countdown text; released after final retained emoji or mode exit. Allocation failure logs and falls back to partial direct redraw, which may locally flicker. No refresh cadence, radio, sleep, settings or hardware/backlight GPIO changes. V1.39 staged on main, owner build/OTA/visual validation required. V1.38 owner compile PASS; exact full BLE/30/30/maintenance/OSA qualification still pending. Existing OTA verification over Wi-Fi can time out after autonomous boot; serial is required. No FIELD enable.
