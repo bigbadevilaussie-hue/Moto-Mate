@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.46 sensor commissioning — 2026-11-27
+
+Owner corrected BENCH SDA/SCL wiring from TFT SPI GPIO11/12 to sensor I2C GPIO6/7. Verified JSON netAssignments net10/11 are correct and separate from TFT net15/14. V1.44 actual serial cycle12: SHT40 0x44 ACK, temperature27.97C RH46.38%, CRC OK; MPU address0x68 ACK WHO_AM_I=0x74, rejected by old strict0x68 identity check; RTC absent as expected. Four wires confirmed, AD0 unchanged. Linux inv_mpu6050 driver identifies 0x74 as MPU6515 with MPU6500 register map (https://linux.googlesource.com/linux/kernel/git/torvalds/linux/+/267594792a71018788af69e836c52e34bb8054af/drivers/iio/imu/inv_mpu6050/inv_mpu_core.c and inv_mpu_iio.h). Physical die authenticity not established. V1.46 explicitly accepts 0x68 and 0x74 at either supported bus address; for 0x74 configures and reads back accel filter register0x1d in addition to existing range, sample divider, power readback. Same basic accel/gyro scaling, 100ms warm-up, same selected address for verified sleep; no wildcard identity bypass. JSON reports numeric WHO_AM_I and model; V1.45 periodic diagnostics included. Build, actual motion readings, calibration and sleep readback pending. No hardware netlist changes, no radio changes, FIELD disabled.
+
+
 ## V1.45 — repeat sensor diagnostics for wiring repair
 
 Owner requested looping the V1.44 test to diagnose four-wire hookup. BENCH sensor polling now repeats targeted four-address probes and SDA/SCL idle levels every 2s, deferring until SHT conversion finishes, plus current fresh temperature/RH and accel/gyro or explicit failure states. Failed sensor retry interval reduced from 5s to 2s. Existing startup scan and first valid readings retained. No additional diagnostic while paused or final BENCH sleep countdown; existing 30/30 cycle and physical 180s maintenance lease unchanged. Diagnostic output pauses during synchronous OTA processing. No general scan, new wiring, radio changes or FIELD enable. Owner compile/OTA/physical proof pending. V1.44 last running, all four expected addresses NACK.
