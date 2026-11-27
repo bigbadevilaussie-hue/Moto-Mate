@@ -14,7 +14,7 @@ def main():
     p.add_argument("--profile", choices=("BENCH", "FIELD"))
     p.add_argument("--bench-sleep", choices=("0", "1"))
     p.add_argument("--verbose", choices=("0", "1"))
-    p.add_argument("--fake-adc-mv", type=int, choices=None, metavar="MV", help="BENCH simulator voltage in mV (0..20000)")
+    p.add_argument("--fake-adc-mv", type=int, choices=None, metavar="MV", help="Commissioning simulator voltage in mV (0..20000)")
     a = p.parse_args()
     if a.fake_adc_mv is not None and not 0 <= a.fake_adc_mv <= 20000:
         p.error("--fake-adc-mv must be 0..20000")
