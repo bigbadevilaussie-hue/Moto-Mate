@@ -352,11 +352,11 @@ bool serviceEntry(SplashMode mode) {
   serviceText(tft,"MOTO-MATE",3,&lgfx::fonts::FreeSansBold12pt7b,SERVICE_WHITE);
   tft.drawFastHLine(8,27,144,SERVICE_RED);
   tft.drawFastHLine(8,29,144,SERVICE_TRACK);
-  serviceText(tft,mode==SplashMode::FirmwareUpdate?"FIRMWARE UPDATE":"MAINTENANCE",
+  serviceText(tft,mode==SplashMode::FirmwareUpdate?"FIRMWARE UPLOAD":"MAINTENANCE",
               34,&lgfx::fonts::FreeSansBold9pt7b,SERVICE_CYAN);
   return true;
 }
-void serviceStrip(int y,const char* headline,const char* footer,unsigned pct,uint16_t color) {
+void serviceStrip(int y,const char* headline,const char* footer,unsigned pct,uint16_t color,const char* secondary=nullptr) {
   const bool buffered=prepareStrip();
   // If the temporary buffer cannot be allocated, leave the static header
   // intact and redraw only the affected region; no effect on OTA or lease.
@@ -366,9 +366,11 @@ void serviceStrip(int y,const char* headline,const char* footer,unsigned pct,uin
   else tft.fillRect(0,y,160,33,SERVICE_BLACK);
   if (headline) serviceText(target,headline,base,&lgfx::fonts::FreeSansBold12pt7b,color);
   if (footer) serviceText(target,footer,base+(headline?21:6),&lgfx::fonts::DejaVu9,SERVICE_WHITE);
+  if (secondary) serviceText(target,secondary,base+19,&lgfx::fonts::DejaVu9,SERVICE_AMBER);
   if (pct<=100) {
     target.fillRect(8,base+23,144,7,SERVICE_TRACK);
     if (pct) target.fillRect(8,base+23,int(144*pct/100),7,color);
+    for (int x=20;x<152;x+=12) target.drawFastVLine(x,base+23,7,SERVICE_BLACK);
   }
   if (buffered) stripBuffer.pushSprite(0,y);
 }
@@ -381,9 +383,9 @@ void displayMaintenance(bool connected,uint64_t deadlineUs) {
   char timer[12],footer[32];
   snprintf(timer,sizeof(timer),"%02u:%02u",seconds/60,seconds%60);
   snprintf(footer,sizeof(footer),"%s  /  V%s",connected?"WI-FI READY":"CONNECTING",MOTO_MATE_VERSION);
-  // 54..86: large time; 95..127: lease bar and link label.
+  // 54..86: large time and segmented lease bar; 95..127: link label.
   serviceStrip(54,timer,nullptr,seconds*100/180,seconds<=30?SERVICE_AMBER:SERVICE_CYAN);
-  serviceStrip(95,nullptr,footer,101,SERVICE_CYAN);
+  serviceStrip(95,nullptr,footer,101,SERVICE_CYAN,"AUTO EXIT AT ZERO");
   serviceSeconds=seconds;
   serviceConnected=connected;
   hardwareBacklight(true);
@@ -410,9 +412,9 @@ void displayFirmwareUpload(UploadView stage,size_t accepted,size_t total,uint64_
   serviceStrip(54,headline,nullptr,pct<=100?pct:100,color);
   // Actual accepted byte count and original lease remaining. No claimed
   // success until Update.end succeeds; reboot verification belongs to OSA.
-  serviceStrip(95,nullptr,stage==UploadView::Receiving?footer:
+  serviceStrip(95,nullptr,footer,101,color,
                stage==UploadView::Committed?"IMAGE COMMITTED":
-               stage==UploadView::Verifying?"DO NOT POWER OFF":"CHECK OSA / SERIAL",101,color);
+               stage==UploadView::Failed?"CHECK OSA / SERIAL":"DO NOT POWER OFF");
   serviceStage=st; servicePercent=pct; serviceSeconds=seconds;
   serviceAccepted=accepted; serviceTotal=total; serviceFrameMs=now;
   hardwareBacklight(true);
