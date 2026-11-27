@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## Owner clarification — 24/7 monitor scheduling (2026-11-27)
+
+Owner states the 24/7 monitor only stops for OTA, riding and deep sleep. Default background acquisition/logging while otherwise awake, including idle maintenance, Rider Ready and Battery Test; ride logger takes over during riding. Resume monitor eligibility after those pauses, no extra wake, no fabricated catch-up, independent of serial verbosity. V/T/H coherent sample; voltage qualification still pending, T/H live and connected to existing commissioning writer. This changes the prior log-contract direction of periodic monitor samples during riding; production scheduling contract and transition/event semantics must be reconciled before implementation, existing binary schema unchanged. Existing nominal cadence remains unchanged pending implementation review. V1.46 normal BENCH writing off; no firmware change or FIELD enable here.
+
+
 ## V1.46 tilt and MPU sleep register verification PASS — 2026-11-27
 
 Owner serial shows stable changed orientation acceleration (1.012,0.174,-0.025)g versus prior (0.064,0.172,1.074)g, approximately 87 degrees relative gravity-vector change, demonstrating static tilt response; physical axis mapping and absolute calibration remain unqualified. SHT40 27.17C 48.10% CRC OK; fitted I2C addresses ACK throughout. BLE shutdown PASS; [SENSORS] quiesced MPU=sleep_verified SHT40=valid; countdown5..1; cycle2 timer30000ms pre_sleep30006230us BENCH BL ON. MPU sleep register readback PASS, not proof of actual sleep current. Cycle2 indicates autonomous timer-cycle progression with valid sensors; next post-sleep boot not included in excerpt. Calibration, electrical current, FIELD qualification pending. No firmware changes.
