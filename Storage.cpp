@@ -6,6 +6,7 @@
 #include "LogInventoryPolicy.h"
 #include <esp_attr.h>
 #include "BenchSensors.h"
+#include "Hardware.h"
 #include "MotoClock.h"
 #include "Config.h"
 #include <esp_sleep.h>
@@ -48,7 +49,7 @@ bool autoHeader(mm::log::Header& h,unsigned& count) {
   uint8_t mac[6]={};
   return decodeSleepCheckpoint(autoCheckpoint,sizeof(autoCheckpoint),h,count,AUTO_BATCH) &&
     !strcmp(logIdState,"valid") && h.generation==logId.generation &&
-    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==47 &&
+    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==48 &&
     esp_efuse_mac_get_default(mac)==ESP_OK && !memcmp(mac,h.device_mac,6) &&
     verifySleepOpen(h,count);
 }
@@ -397,7 +398,13 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   p.state=maintenance?0x46:0x41;
   p.utc_ms=clockLogUtcMs(p.validity);
   sensorsLogSample(now,sample,p.validity);
-  // ADC remains an unqualified rail estimate, battery validity stays clear.
+  // V1.48 automatic BENCH files exclusively carry the synthetic fixture voltage.
+  // Physical ADC values never enter this stream; real T/H retain their validity.
+  uint16_t fakeMv=0;
+  if (hardwareSyntheticVoltage(fakeMv)) {
+    sample.battery_mv=fakeMv;
+    p.validity|=1u<<2;
+  } else return; // refuse mixed-source file writes
   storageBeginMaintenance();
   Header h={}; unsigned count=0;
   bool ok=mounted && storageSleepLogReady(logId.generation);
@@ -405,7 +412,7 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   if(ok && hadCheckpoint) ok=autoHeader(h,count);
   forgetAuto(); // consume before mutation
   if(ok && !hadCheckpoint) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=47;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=48;
     h.generation=logId.generation; h.nominal_period_ms=300000;
     h.opened_boot_id=bootId; h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
     ok=esp_efuse_mac_get_default(h.device_mac)==ESP_OK;
@@ -424,8 +431,8 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   if(!ok) forgetAuto();
   autoState=ok?(seal?"sealed":"committed_open"):"failed_preserved";
   if(mounted) refreshSpace();
-  Serial.printf("[MONITOR] %s seq=%016llx records=%u validity=%04x elapsed_us=%llu; sleep policy unchanged\n",
-    autoState,(unsigned long long)h.file_seq,count,unsigned(p.validity),
+  Serial.printf("[MONITOR] %s seq=%016llx records=%u validity=%04x V=%u mV SYNTHETIC elapsed_us=%llu; sleep policy unchanged\n",
+    autoState,(unsigned long long)h.file_seq,count,unsigned(p.validity),unsigned(fakeMv),
     (unsigned long long)(esp_timer_get_time()-start));
 }
 void storageRecoverMaintenance() {
