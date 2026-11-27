@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.36 owner reset persistence PASS — 2026-11-27
+
+After owner reset, authenticated settings readback reports nvs_ok=true, nvs_state=loaded, storage_schema=2, config_active=false, effective BENCH, all 41 stored values unchanged from migrated readback (37 new numeric fields and four legacy flags). Native regression, Arduino build, OSA OTA/alternate slot verification, migration and reset persistence PASS. V1.36 qualified for tested BENCH configuration foundation only; actual power-loss recovery, factory reset, new-field editing and runtime consumers still pending. FIELD remains disabled. Next V1.37 configurable wake gesture integration. Main-only workflow; redundant v1.36-settings branch previously fast-forwarded and now eligible for owner deletion; connector has no branch-delete action. No firmware changes.
+
+
 ## V1.36 owner OTA and NVS migration PASS — 2026-11-27
 
 Owner verified OSA job af715bb4b89b563b phase=passed, error=null, device/build version=1.36, verified=true, new boot/slot/revision verified; MD5 1e14b8e9074a2d21e761f1d0bba7f735 and SHA256 52fd4fc8d2c442b23117b940b58a219f7f4ed7acc7afb1b98ff4897b58cb9c23 match build receipt. Authenticated GET /settings: profile/effective BENCH, bench_sleep=false, bench_sleep_log=false, verbose=false, field_ready=false, nvs_ok=true, nvs_state=migrated, storage_schema=2, config_active=false; all 37 numeric fields returned with expected defaults, ADC calibration unqualified. Runtime boot reports image954192 B, LittleFS mounted 8192/131072 B used, log identity valid, absent external RTC handled, Wi-Fi 1041 ms at 8.5 dBm RSSI -39, TFT init, wake shadow reaches sleep_pending as expected. No actual sleep or new setting actuation in shadow. Correct OSA CLI connect/ota POST requires EMPTY body, not JSON {}; initial 403 was rejected before upload. Successful OTA uses existing BENCH commissioning service. Next owner reset and readback must show nvs_state=loaded with identical settings; physical persistence and subsequent configurable runtime integration still pending. No firmware changes or FIELD enable.
