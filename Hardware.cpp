@@ -70,6 +70,10 @@ void hardwarePoll(mm::TimeUs now) {
     sampled=true;
   }
 }
+void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress) { gestures.configure(doubleTap,longPress); }
+float hardwareBenchVoltage(mm::TimeUs now) {
+  return sampled && now>=sampleAt && now-sampleAt<=1000000ULL ? adcMv*0.0057f : NAN;
+}
 mm::Gesture hardwareTakeGesture() {
   const auto result=pendingGesture;
   pendingGesture=mm::Gesture::None;
@@ -113,14 +117,13 @@ void hardwareCancelBenchSleep() {
     if (!off(p)) safeOutputs=false;
 }
 
-bool hardwareArmBenchSleep() {
+bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake) {
   const auto pin=static_cast<gpio_num_t>(WAKE_BTN_PIN);
-  if (!safeOutputs || !wakePinRtc || !hardwareButtonReleased(esp_timer_get_time())) return false;
+  if (!safeOutputs || !sleepUs || (buttonWake && (!wakePinRtc || !hardwareButtonReleased(esp_timer_get_time())))) return false;
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
-  bool ok=esp_sleep_enable_timer_wakeup(mm::BENCH_SLEEP_US)==ESP_OK
-      && esp_sleep_enable_ext0_wakeup(pin,0)==ESP_OK
-      && rtc_gpio_pullup_en(pin)==ESP_OK
-      && rtc_gpio_pulldown_dis(pin)==ESP_OK;
+  bool ok=esp_sleep_enable_timer_wakeup(sleepUs)==ESP_OK;
+  if (ok && buttonWake) ok=esp_sleep_enable_ext0_wakeup(pin,0)==ESP_OK
+      && rtc_gpio_pullup_en(pin)==ESP_OK && rtc_gpio_pulldown_dis(pin)==ESP_OK;
   if (ok) {
     for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN}) {
       if (gpio_set_level(static_cast<gpio_num_t>(p),0)!=ESP_OK ||
