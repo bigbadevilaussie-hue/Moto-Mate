@@ -1,7 +1,7 @@
 """Pure host-side presentation rules; never communicates with the motorcycle."""
 import math
 
-GUI_VERSION = "2.04"
+GUI_VERSION = "2.05"
 ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status", "/moto/maintenance/status")
 COLLECT = "/moto/log/start"
 MAINT = "/moto/maintenance/"
@@ -49,3 +49,18 @@ def budget(sleep_ma, awake_ma, sleep_s, awake_s, capacity_ah, days):
     avg = (sleep_ma * sleep_s + awake_ma * awake_s) / (sleep_s + awake_s)
     used = avg * 24 * days / 1000
     return avg, used, 100 * used / capacity_ah
+
+def live_labels(status):
+    data = status.get("data") if status and status.get("alive") is True else None
+    def number(key, low, high):
+        value = data.get(key) if isinstance(data, dict) else None
+        if type(value) in (float, int) and math.isfinite(value) and low <= value <= high:
+            return value
+        return None
+    rail = number("protected_rail_estimate_mv", 0, 65535)
+    temp = number("temperature_c", -40, 125)
+    rh = number("humidity_pct", 0, 100)
+    return (f"{rail/1000:.2f} V*" if rail is not None else "—.— V",
+            "* Protected rail estimate • uncalibrated" if rail is not None else "No fresh qualified ADC sample",
+            f"{temp:.1f} °C\nTemperature" if temp is not None else "— °C\nTemperature",
+            f"{rh:.0f} %\nHumidity" if rh is not None else "— %\nHumidity")
