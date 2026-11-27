@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.41 owner OTA runtime PASS — 2026-11-27
+
+Owner serial confirms V1.39 cycles7–11, awake duration30006034–30006035 us, BLE startup237–239 ms and shutdown PASS, 30s configured timer. Next cycle1 physical long gesture at2064299 us consistent with EXT0 wake and held button (boot cause line truncated, exact cause not independently confirmed); BLE shutdown PASS, lease180000000 us deadline182064445, protected 800ms guard, 8.5dBm ceiling and Wi-Fi1043ms RSSI-43 dBm. OTA accepted1547440 B and committed; software reset to actual V1.41, schema2 BENCH loaded, TFT INIT OK with BL held off until first completed frame, normal30/30, BLE identity544d371c startup253ms. No automatic OTA lease resume expected from V1.39 sender. V1.41 wake flash visual verification, GPIO4 actual connection/polarity/current, full sleep cycle, OSA1.46 deployment and next OTA continuation still pending. No firmware changes; FIELD disabled.
+
+
 ## V1.40 and V1.41 owner build PASS — 2026-11-27
 
 V1.40 compile flash1546577, RAM69660, binary1547168, MD5 89f017fc6b56855367740d1d34b5e4e1 SHA256 63d4fb6bcce45946b19098e04acb01150fe016fa484fa8db7ca908b321149c10. Superseded by V1.41 compile flash1546853/1966080, RAM69660/327680, binary1547440, MD5 38505dbbced5c74975deba2e2798fe39 SHA256 8415a64d794c5698bd8552b6f826afaf9a1339e75f82ef522b22f752c2177bc4. Both compile PASS, V1.41 OTA and BLK physical test pending. Last serial-confirmed running V1.39; first OTA from V1.39 cannot automatically resume maintenance. OSA1.46 host tests/deployment pending. No firmware changes in evidence checkpoint; FIELD disabled.
