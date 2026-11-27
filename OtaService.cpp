@@ -23,6 +23,11 @@
 namespace {
 WebServer server(80);
 uint64_t rebootAt = 0;
+uint64_t leaseEnd = 0;
+bool leaseOpen(uint64_t margin=0) {
+  const uint64_t now=esp_timer_get_time();
+  return now<leaseEnd && leaseEnd-now>margin;
+}
 uint32_t bootId = 0;
 bool receiving = false, complete = false, sawFile = false;
 size_t expected = 0, written = 0;
@@ -30,6 +35,7 @@ String failure;
 const char* HEADERS[] = {"X-Moto-Key", "X-Moto-Size", "X-Moto-MD5"};
 
 bool authorised() {
+  if (!leaseOpen()) return false;
   const String value = server.header("X-Moto-Key");
   const char* secret = MOTO_OTA_KEY;
   if (value.length() != strlen(secret)) return false;
@@ -63,6 +69,7 @@ bool validMD5(const String& s) {
 }
 
 void status() {
+  if (!leaseOpen()) { server.send(403,"text/plain","maintenance expired"); return; }
   const auto* p = esp_ota_get_running_partition();
   const auto* next = esp_ota_get_next_update_partition(nullptr);
   char out[320];
@@ -89,6 +96,7 @@ void status() {
 
 void upload() {
   HTTPUpload& u = server.upload();
+  if (!leaseOpen(2000000ULL)) { abortUpload("maintenance deadline"); return; }
   switch (u.status) {
     case UPLOAD_FILE_START: {
       if (sawFile) { abortUpload("multiple files"); return; }
@@ -96,7 +104,7 @@ void upload() {
       failure = "";
       expected = written = 0;
       complete = receiving = false;
-      if (rebootAt || !authorised()) { abortUpload("unauthorised or reboot pending"); return; }
+      if (rebootAt || !authorised() || !leaseOpen(30000000ULL)) { abortUpload("unauthorised or reboot pending"); return; }
       const auto* target = esp_ota_get_next_update_partition(nullptr);
       const auto* running = esp_ota_get_running_partition();
       const String md5 = server.header("X-Moto-MD5");
@@ -140,8 +148,8 @@ void upload() {
 }
 
 void finishRequest() {
-  if (!authorised()) {
-    abortUpload("unauthorised");
+  if (!authorised() || !leaseOpen(2000000ULL)) {
+    abortUpload("unauthorised or maintenance deadline");
     server.send(403,"text/plain","unauthorised");
   } else if (!complete || !Update.isRunning()) {
     abortUpload(failure.length()?failure.c_str():"missing or incomplete image");
@@ -396,12 +404,14 @@ void startServer() {
 
 void otaInit() { bootId=esp_random(); }
 uint32_t otaBootId() { return bootId; }
-void otaStart() {
+void otaStart(uint64_t deadlineUs) {
+  leaseEnd=deadlineUs;
   static bool configured=false;
   if (!configured) { startServer(); configured=true; }
   else server.begin();
 }
 void otaStop() {
+  leaseEnd=0;
   storageMonitorCancel("wifi_lost_preserved");
   if (receiving || complete || Update.isRunning()) abortUpload("Wi-Fi lost");
   sawFile=false;
