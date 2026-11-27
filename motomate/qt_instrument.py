@@ -5,7 +5,7 @@ from PySide6.QtGui import QPainter, QColor, QPen, QFont
 from PySide6.QtWidgets import (QMainWindow, QWidget, QFrame, QLabel, QPushButton,
     QHBoxLayout, QVBoxLayout, QGridLayout, QScrollArea, QSizeGrip, QDialog, QMessageBox)
 from .qt_app import Dashboard, OsaClient, card, label
-from .qt_model import GUI_VERSION, link_label, age_label
+from .qt_model import GUI_VERSION, link_label, age_label, live_labels
 from .qt_maintenance import Maintenance
 
 
@@ -64,18 +64,21 @@ class Instrument(Dashboard):
             body.addWidget(w)
         layout.addWidget(frame)
         frame, body = card("Battery voltage")
-        voltage = label("—.— V", "metric")
+        self.voltage = voltage = label("—.— V", "metric")
         voltage.setStyleSheet("font-size: 44px; color: #176aab; font-weight: 750;")
         voltage.setAlignment(Qt.AlignmentFlag.AlignCenter)
         body.addWidget(voltage)
-        body.addWidget(label("No qualified ADC sample", "muted"))
+        self.voltage_note = label("No qualified ADC sample", "muted")
+        body.addWidget(self.voltage_note)
         layout.addWidget(frame)
         frame, body = card("Environment")
         readings = QHBoxLayout()
+        self.environment = []
         for text in ("— °C\nTemperature", "— %\nHumidity", "—\nStorage"):
             item = label(text)
             item.setAlignment(Qt.AlignmentFlag.AlignCenter)
             readings.addWidget(item, 1)
+            self.environment.append(item)
         body.addLayout(readings)
         layout.addWidget(frame)
         for title, unit in (("Voltage trend", "voltage"), ("Temperature / humidity", "environment")):
@@ -188,6 +191,11 @@ class Instrument(Dashboard):
 
     def render(self):
         super().render()
+        v, note, temp, rh = live_labels(self.values.get("/moto/status"))
+        self.voltage.setText(v)
+        self.voltage_note.setText(note)
+        self.environment[0].setText(temp)
+        self.environment[1].setText(rh)
         if self.maintenance.busy:
             self.collect_button.setEnabled(False)
         self.maintenance.refresh_controls()
