@@ -13,6 +13,7 @@
 #include "Storage.h"
 #include "LogIdentity.h"
 #include "LogSleepPolicy.h"
+#include <string.h>
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <esp_attr.h>
@@ -40,6 +41,45 @@ RTC_DATA_ATTR uint64_t priorAwakeUs=0;
 mm::Periodic diagnosticSchedule(5000000ULL);
 mm::TimeUs nowUs() { return mm::TimeUs(esp_timer_get_time()); }
 
+// Local USB commissioning input; no extra wakes, BLE writes or Wi-Fi entry.
+void fakeAdcConsolePoll(bool writable) {
+  if(!mm::ADC_SIMULATION_BUILD) return;
+  static char line[16]={};
+  static unsigned len=0;
+  static bool overflow=false;
+  for(unsigned budget=0;budget<32 && Serial.available()>0;++budget) {
+    const int c=Serial.read();
+    if(c<0) return;
+    if(c=='\r') continue;
+    if(c!='\n') {
+      if(len<sizeof(line)-1 && !overflow) line[len++]=char(c);
+      else overflow=true;
+      continue;
+    }
+    if(!overflow && len) {
+      line[len]=0;
+      if(len==4 && !memcmp(line,"ADC?",4)) {
+        uint16_t mv=0;
+        if(settingsFakeAdcGet(mv)) Serial.printf("[ADC] SIM mv=%u profile=%s\n",unsigned(mv),
+          settingsCurrent().profile==mm::Profile::Bench?"BENCH":"FIELD");
+        else Serial.println("[ADC] unavailable");
+      } else if(len>=5 && !memcmp(line,"ADC ",4)) {
+        uint32_t mv=0;
+        bool valid=len<=9;
+        for(unsigned i=4;valid && i<len;++i) {
+          if(line[i]<'0' || line[i]>'9') valid=false;
+          else mv=mv*10+uint32_t(line[i]-'0');
+        }
+        if(!valid || mv>20000) Serial.println("[ADC] rejected: expected 0..20000 mV");
+        else if(!writable) Serial.println("[ADC] rejected: sleep/OTA boundary");
+        else if(!settingsFakeAdcSet(uint16_t(mv))) Serial.println("[ADC] rejected: simulator/settings unavailable");
+        else Serial.printf("[ADC] ACK mv=%u\n",unsigned(mv));
+      } else Serial.println("[ADC] expected ADC? or ADC <mV>");
+    } else if(overflow) Serial.println("[ADC] rejected: command too long");
+    len=0; overflow=false;
+    return; // one command per loop
+  }
+}
 bool radiosOff() {
   wifi_mode_t mode=WIFI_MODE_NULL;
   const esp_err_t w=esp_wifi_get_mode(&mode);
@@ -187,8 +227,8 @@ void setup() {
   benchDisplay=bench && settingsHealthy();
   storageAutoBegin(benchDisplay && !sleepLogEnabled,deep && cause==ESP_SLEEP_WAKEUP_TIMER);
   uint16_t fakeMv=0;
-  if (benchDisplay && hardwareSyntheticVoltage(fakeMv))
-    Serial.printf("[ADC] SYNTHETIC BENCH voltage_mv=%u; real ADC separate; no protection authority\n",unsigned(fakeMv));
+  if (hardwareSyntheticVoltage(fakeMv))
+    Serial.printf("[ADC] SYNTHETIC voltage_mv=%u profile=%s; USB ADC <mV>; no protection authority\n",unsigned(fakeMv),bench?"BENCH":"FIELD");
   // V1.37 also sleeps safely in unqualified recovery, no screen or automatic radio.
   awakeEnd=benchDisplay?mm::TimeUs(cfg.bench_awake_ms)*1000ULL:mm::BENCH_AWAKE_US;
   sleepUs=benchDisplay?mm::TimeUs(cfg.bench_sleep_ms)*1000ULL:mm::BENCH_SLEEP_US;
@@ -219,6 +259,9 @@ void loop() {
   resourcesObserveLoop(now);
   if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
   hardwarePoll(now);
+  const bool adcWriteWindow=!otaBusy() && ((activity==Activity::BenchAwake && now<awakeEnd && awakeEnd-now>6000000ULL) ||
+      (maintenanceEnd && now<maintenanceEnd && maintenanceEnd-now>5000000ULL));
+  fakeAdcConsolePoll(adcWriteWindow);
   const auto gesture=hardwareTakeGesture();
   if (!entryArmed && hardwareButtonReleased(nowUs())) entryArmed=true;
   const bool normal=activity==Activity::BenchAwake || activity==Activity::SleepFault;
