@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.46 tilt and MPU sleep register verification PASS — 2026-11-27
+
+Owner serial shows stable changed orientation acceleration (1.012,0.174,-0.025)g versus prior (0.064,0.172,1.074)g, approximately 87 degrees relative gravity-vector change, demonstrating static tilt response; physical axis mapping and absolute calibration remain unqualified. SHT40 27.17C 48.10% CRC OK; fitted I2C addresses ACK throughout. BLE shutdown PASS; [SENSORS] quiesced MPU=sleep_verified SHT40=valid; countdown5..1; cycle2 timer30000ms pre_sleep30006230us BENCH BL ON. MPU sleep register readback PASS, not proof of actual sleep current. Cycle2 indicates autonomous timer-cycle progression with valid sensors; next post-sleep boot not included in excerpt. Calibration, electrical current, FIELD qualification pending. No firmware changes.
+
+
 ## V1.46 dynamic motion and maintenance expiry PASS — 2026-11-27
 
 Owner serial shows changing accel and gyro during movement, Y gyro -147.90 to +91.44dps observed, followed by stable accel approximately (0.064,0.172,1.074)g and gyro X approximately1.7dps, Y/Z near zero. Motion response PASS, absolute orientation and scale calibration not certified. Maintenance expired with no renewal, software reboot V1.46 into autonomous BENCH, BLE advertising identity b12a7ec1 init255ms, I2C devices reidentified and configuration verified, both fresh samples resumed, SHT CRC valid throughout; final shown temp27.19C RH47.31%. No MPU sleep_verified or complete subsequent sleep cycle yet in supplied excerpt. Actual current unmeasured. FIELD disabled; no firmware changes.
