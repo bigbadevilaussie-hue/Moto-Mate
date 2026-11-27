@@ -7,11 +7,13 @@
 void hardwareBegin(mm::TimeUs now);
 void hardwareReportBoot();
 void hardwarePoll(mm::TimeUs now);
+void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress);
+float hardwareBenchVoltage(mm::TimeUs now);
 mm::Gesture hardwareTakeGesture();
 bool hardwareGesturePending();
 String hardwareStatus();
 
 // Explicit bench test only; caller must have never started the radios.
 bool hardwareButtonReleased(mm::TimeUs now);
-bool hardwareArmBenchSleep();
+bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake);
 void hardwareCancelBenchSleep();
