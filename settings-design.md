@@ -1,5 +1,35 @@
 # V1.12 — persistent settings foundation
 
+## Current owner direction — 2026-11-27
+
+This section supersedes conflicting historical design text below; it describes requirements, not implemented or tested behaviour.
+
+- Technical lead owns routine coding, naming, defaults, units, validation, configuration schema and implementation choices. Owner directs requirements and may intervene. Maintain the handover, operating design, settings design, port plan and README as work progresses. Preserve protected radio approval boundaries, locked logging contract, owner-controlled physical tests/deployment and no FIELD activation.
+- Physical GPIO13 long press is the ONLY maintenance entry. No GUI, OSA, BLE, Wi-Fi or queued remote entry; remove activation UI and reject remote entry at the authority boundary. GUI may attach to an existing device-authorised lease. OTA admission requires that lease. Absolute 180 s monotonic deadline, no renewal or reboot reset. BENCH commissioning bypasses are historical test behaviour, not production authorisation.
+- Single click Rider Ready 30 s; double click Battery Test 10 s; long press maintenance, proposed default 2 s (V1.35 shadow uses 1.5 s); double window 350 ms. One debouncer (30 ms), nonblocking mutually exclusive events, no lease extension, stuck input protection. Real boot capture and physical qualification remain open.
+- Same firmware BENCH/FIELD NVS profile. Configurable BENCH awake/sleep defaults 30/30 s; FIELD sleep default 300 s now configurable (supersedes fixed-sleep NVS prohibition); ordinary FIELD awake ceiling 10 s, sleep sooner. No civil-time scheduling. Changing FIELD cadence requires explicit reconciliation with locked schema-1 monitor cadence before enabling; do not silently change wire semantics.
+- FIELD screen never on per latest owner wording; whether deliberate physical button screens and PANIC are exceptions remains unresolved. BENCH normal voltage/temp instrumentation then sleeping emoji. Preserve sacred cold-start cues subject to resolving display policy.
+- Maintenance temporarily suspends normal battery-first operating policy for human intervention; safe electrical/flash limits and lease deadline still apply. Engine start/stop, crank sag discrimination and auxiliary rail safety require qualified evidence.
+- No firmware changes in this documentation checkpoint. V1.35 wake policy staged/shadow only; V1.34 last confirmed firmware; OSA1.44 deployed with 59/59 tests, GUI2.04 icon visually confirmed; standalone bundle and full lifecycle remain unqualified.
+
+## Recovered configuration candidates (design, not storage keys)
+
+Defaults proposed, voltage thresholds provisional until ADC and battery testing. Lead owns final names, ranges and units. Boolean zero is valid, not unset.
+
+| Group | Parameters and proposed defaults |
+| --- | --- |
+| Profile/timing | BENCH/FIELD; bench awake 30 s, bench sleep 30 s, field sleep 300 s |
+| Voltage | engine start 13.2 V, stop 12.9 V; AGM safe 12.6 V, warning 12.3 V, PANIC 12.0 V; charging low 13.2 V/high 14.8 V |
+| Button | Rider Ready 30 s, Battery Test 10 s, double window 350 ms, long press 2 s |
+| Audible/LED | engine-start chirp enabled; fake alarm master enabled; post-ride audible check enabled, delay 10 s; full ride logs independent of audible option |
+| ADC | gain, offset mV, qualified calibration status; factory calibration plus end-to-end multimeter reference, multiple points and independent verification, proposed ±100 mV target; shared calibrated voltage across consumers |
+| MYPOO | enabled, movement 0.15 g, tilt 10 degrees relative to parked reference, qualification 500 ms, riding 50 Hz, parked scheduled wake, stationary calibration enabled |
+| GPS | enabled, 1 Hz, minimum 4 satellites, max HDOP 2.5, stale 5 s, initial fix warning 60 s; switched rail; no fix never blocks logging/sleep |
+| SHIT40 | enabled, every parked wake, riding 30 s, condensation margin 2 C above dew point |
+
+Existing schema-1 flags (profile, bench sleep, verbose, one-shot bench sleep logging) require explicit migration/commissioning separation; retain logging identity namespace. Validate whole candidate before commit, readback, no redundant writes, no silent repair of unknown/corrupt schema. Calibration status is earned by verification, not arbitrary toggle. Fixed 180 s lease is not a setting. Other candidate timings from older discussion (restart grace 30 s, ride log 5 s, collection 24 h) must be reconciled with locked logging contract and are not automatically new tunables. ADC capacitor discrepancy 100 nF schematic vs older 1 uF prose and protected-rail diode drop remain hardware qualification items.
+
+
 Owner decision 2026-11-26: BENCH/FIELD is an NVS setting, never a firmware image or OTA switch. Same firmware, requested profile distinct from runtime activity. NVS namespace motomate, key config_v1, one uint32 word with schema marker 0x4d4d0100 and flags FIELD=1, bench sleep requested=2, verbose requested=4. Missing key initialises BENCH/false/false once, commit and reopen/readback; identical updates do not write. Unknown schema/type or I/O failure is explicitly reported, no erase or automatic repair, development recovery access remains. Normal app-only OTA does not erase NVS; full flash erase does. No battery thresholds/calibration added before measurements.
 
 GET /status includes settings object, old OTA client contract retained (mode ota_bench remains a compatibility label, not profile). Authenticated GET /settings and POST /settings use existing local X-Moto-Key; full three-field URL-encoded request profile=BENCH|FIELD, bench_sleep=0|1, verbose=0|1. Reject malformed fields, writes during OTA, unavailable NVS. CLI tools/moto_settings.py reads local key without printing it and verifies a fresh GET. Single owner, last complete write wins. No reboot needed for changes. Plain HTTP trusted LAN only.
