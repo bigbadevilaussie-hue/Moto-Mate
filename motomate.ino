@@ -36,6 +36,35 @@ RTC_DATA_ATTR uint64_t priorAwakeUs=0;
 mm::Periodic diagnosticSchedule(5000000ULL);
 mm::TimeUs nowUs() { return mm::TimeUs(esp_timer_get_time()); }
 
+// BENCH observation only. Never controls the physical radio, display or sleep.
+mm::WakeLook wakeLook;
+bool observeWakeLook=false;
+const char* wakeActivityName(mm::WakeActivity state) {
+  switch(state) {
+    case mm::WakeActivity::Look: return "LOOK";
+    case mm::WakeActivity::RiderReady: return "RIDER_READY";
+    case mm::WakeActivity::BatteryTest: return "BATTERY_TEST";
+    case mm::WakeActivity::Maintenance: return "MAINTENANCE";
+    case mm::WakeActivity::Riding: return "RIDING";
+    case mm::WakeActivity::SleepPending: return "SLEEP_PENDING";
+  }
+  return "UNKNOWN";
+}
+void wakeLookObserve(mm::TimeUs now) {
+  const auto gesture=hardwareTakeGesture();
+  if (!observeWakeLook) return;
+  // Existing BENCH OTA remains awake: rearm shadow after simulated sleep
+  // for a new physical gesture, NOT a new real wake or maintenance lease.
+  if (wakeLook.activity()==mm::WakeActivity::SleepPending && gesture!=mm::Gesture::None)
+    wakeLook.begin(now,mm::WakeCause::Button);
+  const auto previous=wakeLook.activity();
+  wakeLook.step(now,gesture,false,false,hardwareGesturePending());
+  if (gesture!=mm::Gesture::None || wakeLook.activity()!=previous)
+    Serial.printf("[WAKE LOOK] SHADOW gesture=%u state=%s deadline_us=%llu at_us=%llu; no actuation\\n",
+        unsigned(gesture),wakeActivityName(wakeLook.activity()),
+        (unsigned long long)wakeLook.deadline(),(unsigned long long)now);
+}
+
 bool radiosOff() {
   wifi_mode_t mode=WIFI_MODE_NULL;
   const esp_err_t w=esp_wifi_get_mode(&mode);
@@ -110,6 +139,13 @@ void setup() {
   diagnosticSchedule.start(nowUs());
   otaInit();
   const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
+  observeWakeLook=bench;
+  const auto wakeCause=cause==ESP_SLEEP_WAKEUP_TIMER?mm::WakeCause::Timer:
+      cause==ESP_SLEEP_WAKEUP_EXT0?mm::WakeCause::Button:
+      cause==ESP_SLEEP_WAKEUP_UNDEFINED?mm::WakeCause::Cold:mm::WakeCause::Other;
+  wakeLook.begin(0,wakeCause); // deadline includes setup, not only loop time
+  if (observeWakeLook) Serial.printf("[WAKE LOOK] SHADOW boot=%u deadline_us=%llu; no actuation\\n",
+      unsigned(wakeCause),(unsigned long long)wakeLook.deadline());
   const bool qualifiedTimer=esp_reset_reason()==ESP_RST_DEEPSLEEP && cause==ESP_SLEEP_WAKEUP_TIMER;
   const bool continuing=bench && qualifiedTimer &&
       (benchMagic==BENCH_MAGIC || benchMagic==BENCH_LOG_MAGIC) && benchCycle>0 && benchCycle<0xFFFFFFFFUL;
@@ -159,6 +195,7 @@ void loop() {
   resourcesObserveLoop(nowUs());
   if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
   hardwarePoll(nowUs());
+  wakeLookObserve(nowUs());
   if (activity!=Activity::BenchCountdown || nowUs()+5000000ULL<countdownEnd) sensorsPoll(nowUs());
   if (settingsHealthy() && mm::verboseActive(settingsCurrent()) && diagnosticSchedule.due(nowUs())) {
     Serial.printf("[DIAG] uptime_us=%llu%s\n",(unsigned long long)nowUs(),hardwareStatus().c_str());

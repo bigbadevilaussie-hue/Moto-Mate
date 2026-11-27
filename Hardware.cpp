@@ -7,7 +7,9 @@
 #include <esp_timer.h>
 namespace {
 mm::Periodic adcSchedule(250000); // BENCH observation cadence, not crank capture
-mm::DebouncedInput button(30000); // provisional debounce, no gesture policy
+mm::DebouncedInput button(30000); // sole debounce owner
+mm::Gestures gestures;
+mm::Gesture pendingGesture=mm::Gesture::None;
 bool safeOutputs=false, sampled=false, wakePinRtc=false;
 esp_sleep_wakeup_cause_t bootCause=ESP_SLEEP_WAKEUP_UNDEFINED;
 uint32_t adcMv=0;
@@ -39,7 +41,10 @@ void hardwareBegin(mm::TimeUs now) {
   if (wakePinRtc)
     wakePinRtc=rtc_gpio_deinit(wakePin)==ESP_OK;
   pinMode(WAKE_BTN_PIN,INPUT_PULLUP);
-  button.begin(mm::TimeUs(esp_timer_get_time()),digitalRead(WAKE_BTN_PIN)==LOW);
+  const auto sampledAt=mm::TimeUs(esp_timer_get_time());
+  button.begin(sampledAt,digitalRead(WAKE_BTN_PIN)==LOW);
+  gestures.begin(sampledAt,button.value(),bootCause==ESP_SLEEP_WAKEUP_EXT0);
+  pendingGesture=mm::Gesture::None;
   analogReadResolution(12);
   analogSetPinAttenuation(VOLTAGE_PIN,ADC_11db);
   adcSchedule.start(now);
@@ -57,12 +62,20 @@ void hardwarePoll(mm::TimeUs now) {
       button.value()?"PRESS":"RELEASE",(unsigned long)button.edges(),
       (unsigned long long)now,(unsigned long long)button.lastHoldUs());
   }
+  const auto gesture=gestures.poll(now,button.value(),button.rawValue());
+  if (gesture!=mm::Gesture::None) pendingGesture=gesture;
   if (adcSchedule.due(now)) {
     adcMv=analogReadMilliVolts(VOLTAGE_PIN);
     sampleAt=esp_timer_get_time();
     sampled=true;
   }
 }
+mm::Gesture hardwareTakeGesture() {
+  const auto result=pendingGesture;
+  pendingGesture=mm::Gesture::None;
+  return result;
+}
+bool hardwareGesturePending() { return gestures.pending() || button.rawValue(); }
 String hardwareStatus() {
   char buf[360];
   if (!sampled) {
