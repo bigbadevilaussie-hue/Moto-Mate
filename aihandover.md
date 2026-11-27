@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.43 owner build PASS — 2026-11-27
+
+Owner compile PASS at main 2f38e51: flash1548833/1966080, RAM69692/327680, remaining257988 B. Build schema1 version1.43 image motomate.ino.bin 1549424 B MD5 68cdfbe13a3fbed23539ba4f8b817191 SHA256 f7d92396285169705857bb5b7d2ba1f67cf8732b8b8f2ddcb324dfe254551030. V1.41 last confirmed running; V1.41->1.43 OTA is first actual retained maintenance lease test. New branded maintenance/OTA detail fit still requires visual verification; upload splash will first run during an OTA initiated by V1.43, not while installing it from V1.41. BLK not wired at last report. OSA1.46 regression and deployment not confirmed. No firmware change in evidence checkpoint; FIELD disabled.
+
+
 ## V1.43 — preserve commissioned splash identity (2026-11-27)
 
 Owner explicitly requires original main splash design unchanged. Supersedes V1.42 alternate layout: service screens now call existing drawSplash() for original JPEG header/footer artwork, antialiased white mode heading and original version placement. Splash.cpp, Splash.h, SplashArtwork.h untouched. Countdown and upload progress rendered only in original detail band y81..109, white dynamic text with narrow segmented colored bar, no overlap with title or footer. Maintenance countdown, real accepted bytes and commit stages retained; detail sprite 160x29 (9280 bytes pixel storage) reused while in service screen. No changes to boot intro, BENCH instrumentation, sleep emoji, radio, OTA protocol or maintenance lease. V1.43 staged; owner compile and TFT visual fit validation pending; V1.41 last confirmed running. Do not redesign commissioned splash without explicit owner approval.
