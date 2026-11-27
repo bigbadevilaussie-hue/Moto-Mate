@@ -11,6 +11,7 @@ mm::DebouncedInput button(30000); // sole debounce owner
 mm::Gestures gestures;
 mm::Gesture pendingGesture=mm::Gesture::None;
 bool safeOutputs=false, sampled=false, wakePinRtc=false;
+bool backlightOn=false;
 esp_sleep_wakeup_cause_t bootCause=ESP_SLEEP_WAKEUP_UNDEFINED;
 uint32_t adcMv=0;
 mm::TimeUs sampleAt=0;
@@ -30,7 +31,9 @@ void hardwareBegin(mm::TimeUs now) {
   for (int pin : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN}) {
     if (!off(pin)) safeOutputs=false;
   }
+  backlightOn=false;
   // Release global deep-sleep hold only after preparing all output pads.
+  // BL is already LOW before the retained panel CS/RESET are released.
   gpio_deep_sleep_hold_dis();
   // Release retained TFT CS/RESET after the previous BENCH sleep.
   for (int p : {TFT_CS_PIN,TFT_RST_PIN})
@@ -48,6 +51,18 @@ void hardwareBegin(mm::TimeUs now) {
   analogReadResolution(12);
   analogSetPinAttenuation(VOLTAGE_PIN,ADC_11db);
   adcSchedule.start(now);
+}
+bool hardwareBacklight(bool on) {
+  const auto pin=static_cast<gpio_num_t>(TFT_BLK_PIN);
+  if (on && !safeOutputs) return false;
+  if (gpio_set_level(pin,on?1:0)!=ESP_OK) {
+    Serial.println("[TFT] BL GPIO write failed");
+    gpio_set_level(pin,0);
+    backlightOn=false;
+    return false;
+  }
+  backlightOn=on;
+  return true;
 }
 void hardwareReportBoot() {
   Serial.printf("[POWER] safe_gpio=%s wake_cause=%d gpio13_rtc=%s sleep=not_armed\n",
@@ -115,9 +130,10 @@ void hardwareCancelBenchSleep() {
     if (gpio_hold_dis(static_cast<gpio_num_t>(p))!=ESP_OK) safeOutputs=false;
   for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN})
     if (!off(p)) safeOutputs=false;
+  backlightOn=false;
 }
 
-bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake) {
+bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake, bool keepBacklight) {
   const auto pin=static_cast<gpio_num_t>(WAKE_BTN_PIN);
   if (!safeOutputs || !sleepUs || (buttonWake && (!wakePinRtc || !hardwareButtonReleased(esp_timer_get_time())))) return false;
   esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_ALL);
@@ -125,10 +141,14 @@ bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake) {
   if (ok && buttonWake) ok=esp_sleep_enable_ext0_wakeup(pin,0)==ESP_OK
       && rtc_gpio_pullup_en(pin)==ESP_OK && rtc_gpio_pulldown_dis(pin)==ESP_OK;
   if (ok) {
-    for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN}) {
+    for (int p : {MOSFET_PIN,BUZZER_PIN,RED_LED_PIN}) {
       if (gpio_set_level(static_cast<gpio_num_t>(p),0)!=ESP_OK ||
           gpio_hold_en(static_cast<gpio_num_t>(p))!=ESP_OK) ok=false;
     }
+    // BENCH-only exception: retain the already drawn sleep emoji, illuminated.
+    // All recovery/FIELD callers must leave keepBacklight false.
+    if (!hardwareBacklight(keepBacklight) ||
+        gpio_hold_en(static_cast<gpio_num_t>(TFT_BLK_PIN))!=ESP_OK) ok=false;
   }
   // Panel stays powered on BENCH. Prevent reset or stray SPI selection.
   if (ok) {
