@@ -1,5 +1,14 @@
 # Moto-Mate — agreed operating design and development direction
 
+## Maintenance/display clarification — 2026-11-27
+
+Owner: normal BENCH cycles show live instrumentation when awake and sleeping emoji during sleep. BENCH does not imply maintenance. Only physical wake-button long press starts maintenance and enables its Wi-Fi services. Normal BENCH reset/timer wake must not automatically open maintenance; existing commissioning behaviour remains historical until replaced. OSA discovers already-active authorised sessions without commanding entry or adding device wakes; GUI consumes OSA cached lease status, enables maintenance-only controls while a fresh authenticated device lease is valid, greys/disables them on inactive, stale, disconnected or expired status. No activation control. Device rechecks lease for every privileged operation; absolute 180 s from physical acceptance, never renewed. History/graphs/analysis remain available offline. FIELD display stays off under latest owner direction; explicit physical battery-test/Rider Ready display exceptions are not separately confirmed. Panic/urgent Wi-Fi transport remains separate from maintenance authority; cannot grant OTA or settings. Current TFT is ST7735, not OLED (owner colloquial description). Requirements, not implemented.
+
+## Dual-core runtime direction — 2026-11-27 (technical lead design)
+
+ESP32-S3 dual-core FreeRTOS; retain Arduino core 2.0.17. Prefer existing system/network affinity (typically Core 0) and one application coordinator (typically Core 1); verify actual build configuration and task affinity before pinning. No gratuitous task-per-peripheral split. Single owner of state, power/MOSFET, button classification, lease, sleep; bounded workers only when measured blocking/latency warrants it (GPS UART, sensor acquisition, display, storage/HTTP work as appropriate). Use bounded queues/event notifications, immutable snapshots or synchronized ownership, explicit deadlines and backpressure; one I2C bus owner, one storage/flash mutation owner, no concurrent BLE/Wi-Fi, no changes to protected radio sequence/affinity without approval. No busy polling, spin loops or unbounded waits. Workers block when idle, acknowledge quiescence before sleep; no new wake solely for worker activity. Shared flash operations can stall both cores; never assume affinity provides hard real-time isolation, never sleep mid-transaction. Benchmark both core identities, task stack high-water, heap, loop/input latency, ADC cadence, queue saturation, watchdogs, shutdown latency and whole-input wake energy with/without additional workers; exercise radio loss, stuck button and flash failure. Dual-core work only if beneficial; both application cores stop in deep sleep. No implementation or test claims in this checkpoint.
+
+
 ## Current owner direction — 2026-11-27
 
 This section supersedes conflicting historical design text below; it describes requirements, not implemented or tested behaviour.
