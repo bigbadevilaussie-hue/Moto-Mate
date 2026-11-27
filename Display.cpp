@@ -3,6 +3,7 @@
 #include "Hardware.h"
 #include <Arduino.h>
 #include <cstring>
+#include <esp_timer.h>
 
 namespace {
 class MotoDisplay : public lgfx::LGFX_Device {
@@ -48,6 +49,11 @@ lgfx::LGFX_Sprite stripBuffer(&tft);
 bool stripReady=false, liveDrawn=false, stripFailed=false;
 char oldV[24]={},oldT[24]={},oldH[24]={},oldFooter[32]={};
 bool ready = false;
+// Screen-specific dirty cache. No redraw on repeated loop ticks.
+unsigned serviceSeconds=999, servicePercent=999, serviceStage=999;
+uint32_t serviceFrameMs=0;
+size_t serviceAccepted=0, serviceTotal=0;
+bool serviceConnected=false;
 bool drawn = false;
 bool animating = false;
 unsigned sleepShown=999;
@@ -313,5 +319,101 @@ void displayBenchLive(unsigned seconds,float voltage,float temperature,float hum
     endRow(95);
     strcpy(oldFooter,footer);
   }
+  hardwareBacklight(true);
+}
+
+namespace {
+constexpr uint16_t SERVICE_BLACK=0x0000, SERVICE_WHITE=0xffff, SERVICE_CYAN=0x07ff,
+                   SERVICE_AMBER=0xffe0, SERVICE_RED=0xf800, SERVICE_GREEN=0x07e0,
+                   SERVICE_TRACK=0x2104;
+unsigned remainingSeconds(uint64_t deadlineUs) {
+  const uint64_t now=esp_timer_get_time();
+  return deadlineUs>now?unsigned((deadlineUs-now+999999ULL)/1000000ULL):0;
+}
+void serviceText(lgfx::LGFXBase& target,const char* text,int y,const lgfx::IFont* font,uint16_t color) {
+  target.setTextDatum(lgfx::textdatum_t::top_left);
+  target.setTextSize(1);
+  target.setFont(font);
+  if (target.textWidth(text)>152) target.setFont(&lgfx::fonts::FreeSansBold9pt7b);
+  target.setTextColor(color);
+  target.drawString(text,(160-target.textWidth(text))/2,y);
+}
+bool serviceEntry(SplashMode mode) {
+  if (drawn && lastMode==mode) return false;
+  stopIntro();
+  releaseStrip();
+  sleepShown=999;
+  drawn=true;
+  lastMode=mode;
+  serviceSeconds=servicePercent=serviceStage=999;
+  serviceAccepted=serviceTotal=0;
+  serviceFrameMs=0;
+  tft.fillScreen(SERVICE_BLACK);
+  serviceText(tft,"MOTO-MATE",3,&lgfx::fonts::FreeSansBold12pt7b,SERVICE_WHITE);
+  tft.drawFastHLine(8,27,144,SERVICE_RED);
+  tft.drawFastHLine(8,29,144,SERVICE_TRACK);
+  serviceText(tft,mode==SplashMode::FirmwareUpdate?"FIRMWARE UPDATE":"MAINTENANCE",
+              34,&lgfx::fonts::FreeSansBold9pt7b,SERVICE_CYAN);
+  return true;
+}
+void serviceStrip(int y,const char* headline,const char* footer,unsigned pct,uint16_t color) {
+  const bool buffered=prepareStrip();
+  // If the temporary buffer cannot be allocated, leave the static header
+  // intact and redraw only the affected region; no effect on OTA or lease.
+  lgfx::LGFXBase& target=buffered?static_cast<lgfx::LGFXBase&>(stripBuffer):static_cast<lgfx::LGFXBase&>(tft);
+  const int base=buffered?0:y;
+  if (buffered) stripBuffer.fillScreen(SERVICE_BLACK);
+  else tft.fillRect(0,y,160,33,SERVICE_BLACK);
+  if (headline) serviceText(target,headline,base,&lgfx::fonts::FreeSansBold12pt7b,color);
+  if (footer) serviceText(target,footer,base+(headline?21:6),&lgfx::fonts::DejaVu9,SERVICE_WHITE);
+  if (pct<=100) {
+    target.fillRect(8,base+23,144,7,SERVICE_TRACK);
+    if (pct) target.fillRect(8,base+23,int(144*pct/100),7,color);
+  }
+  if (buffered) stripBuffer.pushSprite(0,y);
+}
+}
+void displayMaintenance(bool connected,uint64_t deadlineUs) {
+  if (!ready) return;
+  const unsigned seconds=remainingSeconds(deadlineUs);
+  const bool first=serviceEntry(SplashMode::Maintenance);
+  if (!first && serviceSeconds==seconds && serviceConnected==connected) return;
+  char timer[12],footer[32];
+  snprintf(timer,sizeof(timer),"%02u:%02u",seconds/60,seconds%60);
+  snprintf(footer,sizeof(footer),"%s  /  V%s",connected?"WI-FI READY":"CONNECTING",MOTO_MATE_VERSION);
+  // 54..86: large time; 95..127: lease bar and link label.
+  serviceStrip(54,timer,nullptr,seconds*100/180,seconds<=30?SERVICE_AMBER:SERVICE_CYAN);
+  serviceStrip(95,nullptr,footer,101,SERVICE_CYAN);
+  serviceSeconds=seconds;
+  serviceConnected=connected;
+  hardwareBacklight(true);
+}
+void displayFirmwareUpload(UploadView stage,size_t accepted,size_t total,uint64_t deadlineUs) {
+  if (!ready) return;
+  const bool first=serviceEntry(SplashMode::FirmwareUpdate);
+  const unsigned st=unsigned(stage),seconds=remainingSeconds(deadlineUs);
+  const unsigned pct=total?unsigned((uint64_t(accepted)*100)/total):0;
+  const uint32_t now=millis();
+  if (!first && st==serviceStage && now-serviceFrameMs<250) return;
+  if (!first && st==serviceStage && pct==servicePercent && seconds==serviceSeconds &&
+      accepted==serviceAccepted && total==serviceTotal) return;
+  const char* label=stage==UploadView::Receiving?"UPLOADING":
+                    stage==UploadView::Verifying?"VERIFYING":
+                    stage==UploadView::Committed?"REBOOTING":"UPLOAD FAILED";
+  const uint16_t color=stage==UploadView::Failed?SERVICE_RED:
+                       stage==UploadView::Committed?SERVICE_GREEN:SERVICE_AMBER;
+  char headline[20],footer[40];
+  if (stage==UploadView::Receiving) snprintf(headline,sizeof(headline),"%u%%",pct);
+  else snprintf(headline,sizeof(headline),"%s",label);
+  snprintf(footer,sizeof(footer),"%lu/%lu KiB  %02u:%02u",
+           (unsigned long)(accepted/1024),(unsigned long)(total/1024),seconds/60,seconds%60);
+  serviceStrip(54,headline,nullptr,pct<=100?pct:100,color);
+  // Actual accepted byte count and original lease remaining. No claimed
+  // success until Update.end succeeds; reboot verification belongs to OSA.
+  serviceStrip(95,nullptr,stage==UploadView::Receiving?footer:
+               stage==UploadView::Committed?"IMAGE COMMITTED":
+               stage==UploadView::Verifying?"DO NOT POWER OFF":"CHECK OSA / SERIAL",101,color);
+  serviceStage=st; servicePercent=pct; serviceSeconds=seconds;
+  serviceAccepted=accepted; serviceTotal=total; serviceFrameMs=now;
   hardwareBacklight(true);
 }
