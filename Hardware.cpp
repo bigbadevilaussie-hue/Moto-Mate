@@ -84,16 +84,15 @@ void hardwarePoll(mm::TimeUs now) {
 }
 void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress) { gestures.configure(doubleTap,longPress); }
 float hardwareBenchVoltage(mm::TimeUs now) {
-  return sampled && now>=sampleAt && now-sampleAt<=1000000ULL ? adcMv*0.0057f : NAN;
+  (void)now;
+  uint16_t mv=0;
+  return hardwareSyntheticVoltage(mv)?float(mv)/1000.0f:NAN;
 }
 bool hardwareSyntheticVoltage(uint16_t& mv) {
-  if (!settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) return false;
-  mv=12830; // V1.48 fixed synthetic BENCH fixture, never physical battery evidence.
-  return true;
+  return settingsFakeAdcGet(mv);
 }
 float hardwareBenchDisplayVoltage(mm::TimeUs now) {
-  uint16_t mv=0;
-  return hardwareSyntheticVoltage(mv)?float(mv)/1000.0f:hardwareBenchVoltage(now);
+  return hardwareBenchVoltage(now);
 }
 mm::Gesture hardwareTakeGesture() {
   const auto result=pendingGesture;
@@ -116,7 +115,7 @@ String hardwareStatus() {
   if (hardwareSyntheticVoltage(syntheticMv)) {
     status+=",\"voltage_source\":\"synthetic_bench\",\"synthetic_voltage_mv\":";
     status+=String(unsigned(syntheticMv));
-  } else status+=",\"voltage_source\":\"physical_uncalibrated\",\"synthetic_voltage_mv\":null";
+  } else status+=",\"voltage_source\":\"synthetic_unavailable\",\"synthetic_voltage_mv\":null";
   char wake[320];
   const auto now=mm::TimeUs(esp_timer_get_time());
   snprintf(wake,sizeof(wake),
