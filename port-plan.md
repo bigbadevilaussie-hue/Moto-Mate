@@ -1,5 +1,10 @@
 # Moto-Mate — dependency-ordered port plan
 
+## V1.36 owner OTA and NVS migration PASS — 2026-11-27
+
+Owner verified OSA job af715bb4b89b563b phase=passed, error=null, device/build version=1.36, verified=true, new boot/slot/revision verified; MD5 1e14b8e9074a2d21e761f1d0bba7f735 and SHA256 52fd4fc8d2c442b23117b940b58a219f7f4ed7acc7afb1b98ff4897b58cb9c23 match build receipt. Authenticated GET /settings: profile/effective BENCH, bench_sleep=false, bench_sleep_log=false, verbose=false, field_ready=false, nvs_ok=true, nvs_state=migrated, storage_schema=2, config_active=false; all 37 numeric fields returned with expected defaults, ADC calibration unqualified. Runtime boot reports image954192 B, LittleFS mounted 8192/131072 B used, log identity valid, absent external RTC handled, Wi-Fi 1041 ms at 8.5 dBm RSSI -39, TFT init, wake shadow reaches sleep_pending as expected. No actual sleep or new setting actuation in shadow. Correct OSA CLI connect/ota POST requires EMPTY body, not JSON {}; initial 403 was rejected before upload. Successful OTA uses existing BENCH commissioning service. Next owner reset and readback must show nvs_state=loaded with identical settings; physical persistence and subsequent configurable runtime integration still pending. No firmware changes or FIELD enable.
+
+
 ## V1.36 owner build evidence — 2026-11-27
 
 Owner pulled main and ran native settings regression: PASS (37 fields, 160 bytes, migration codec, validation, corruption, readiness). Arduino build PASS: 953593/1966080 B flash (48%), 48224/327680 B static RAM (14%), 279456 B remaining. Fixed build receipt schema1, motomate.ino.bin V1.36, 954192 B, MD5 1e14b8e9074a2d21e761f1d0bba7f735, SHA256 52fd4fc8d2c442b23117b940b58a219f7f4ed7acc7afb1b98ff4897b58cb9c23. OTA not yet reported. Next: confirm existing BENCH settings healthy and no bench sleep/log arm; owner performs OTA using existing OSA/GUI commissioning path, observe V1.36 boot and NVS migrated schema=2, read settings and reset to verify loaded/unchanged. No physical migration/persistence PASS yet, no FIELD enable. Temporary v1.36-settings branch already integrated; delete after owner test. No firmware change.
