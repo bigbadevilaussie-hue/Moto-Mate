@@ -81,8 +81,10 @@ class Maintenance(QWidget):
         for w in (self.sleep,self.verbose,self.apply):
             w.setEnabled(writable)
         if state:
+            remaining=state.get("maintenance_remaining_ms")
+            lease=f" • {remaining/1000:.0f}s remaining" if session and type(remaining) is int else ""
             self.state.setText(str(state.get("stage") or state.get("phase","—"))+
-                               (" • local session open" if session else ""))
+                               (" • local session open" if session else "")+lease)
             self.versions.setText(f"ESP32 {state.get('device_version') or '—'}  /  OSA build {state.get('build_version') or '—'}")
             self.log.setPlainText("\n".join(f"{k}: {state.get(k)}" for k in
                 ("phase","action","job_id","md5","sha256","verified","error")))
@@ -114,4 +116,5 @@ class Maintenance(QWidget):
         if QMessageBox.question(self,"Confirm OTA","Ask OSA to acquire the fixed build, check revision and update if newer? Do not disconnect power during update.",
                 QMessageBox.StandardButton.Yes|QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No)==QMessageBox.StandardButton.Yes:
+            self.owner.open_tool("Serial console")
             self.run("ota")
