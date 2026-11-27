@@ -1,5 +1,10 @@
 # Moto-Mate MkII
 
+## V1.39 owner build PASS — 2026-11-27
+
+Owner compile PASS: flash1545149/1966080 B, static RAM69660/327680 B, remaining258020 B. Fixed build receipt schema1, version1.39, motomate.ino.bin 1545744 B, MD5 1129ce312c272fde2113511e74432347, SHA256 4cb112e54b499c05dba90cc96f56f2eda966cf481aa071408100ebf007333301. Flicker fix compiled; physical display acceptance and OTA pending. V1.38 last serial-confirmed running; owner must physically long press GPIO13 to enter maintenance before OTA. New firmware boots Wi-Fi-off, so old OSA verifier may time out; use serial boot and do not blindly retry. GPIO4 backlight drive unchanged; sensor attachment pending. No FIELD enable or firmware changes in evidence checkpoint.
+
+
 ## V1.38 owner autonomous BENCH runtime PASS — 2026-11-27
 
 Owner serial confirms OTA accepted 1544848 B then RTC_SW_CPU_RST and V1.38 boot, NVS loaded schema2 BENCH, no routine Wi-Fi. Three repeating normal cycles, BLE identities 6382e274 / 85aa9e6f / 36a99633, startup251/237/238 ms, verified BLE shutdown PASS all three, MPU absent quiesce, countdown5..1, pre-sleep30006465/30006797/30006797 us (cycle2 confirmed by retained prior on cycle3), timer30000ms and GPIO13 active-low EXT0 armed. First two subsequent wake/continuation sequences confirmed; third sleep entry reported. No BLE client connection evidence yet, no actual elapsed sleep measurement, no physical maintenance lease expiry test, no sensors attached at this checkpoint. Owner reports screen flicker; V1.39 fix already staged, not yet deployed. Keep FIELD disabled. OSA1.45 host regression/deployment pending. Owner plans MPU6050/SHT40 attachment after lunch. No firmware changes in evidence checkpoint.
