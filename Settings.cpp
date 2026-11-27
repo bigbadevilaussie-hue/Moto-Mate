@@ -107,11 +107,11 @@ bool settingsSave(const mm::Settings& next) {
   return true;
 }
 bool settingsFakeAdcGet(uint16_t& mv) {
-  if(!healthy || !fakeAdcOK || current.profile!=mm::Profile::Bench) return false;
+  if(!mm::ADC_SIMULATION_BUILD || !healthy || !fakeAdcOK) return false;
   mv=fakeAdcMv; return true;
 }
 bool settingsFakeAdcSet(uint16_t mv) {
-  if(!healthy || current.profile!=mm::Profile::Bench || mv>20000) return false;
+  if(!mm::ADC_SIMULATION_BUILD || !healthy || mv>20000) return false;
   if(fakeAdcOK && fakeAdcMv==mv) return true;
   nvs_handle_t h;
   esp_err_t e=nvs_open(NS,NVS_READWRITE,&h);
@@ -123,7 +123,7 @@ bool settingsFakeAdcSet(uint16_t mv) {
   nvs_close(h);
   if(e!=ESP_OK || check!=mv) { fakeAdcOK=false; return false; }
   fakeAdcMv=mv; fakeAdcOK=true;
-  Serial.printf("[ADC] synthetic BENCH set=%u mV; persisted\n",unsigned(mv));
+  Serial.printf("[ADC] synthetic set=%u mV; persisted\n",unsigned(mv));
   return true;
 }
 String settingsJson() {
