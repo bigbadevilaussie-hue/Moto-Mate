@@ -1,5 +1,11 @@
 # Moto-Mate — agreed operating design and development direction
 
+## Owner clarification — 2026-11-27: directories and architectural authority
+
+**AGREED:** Technical lead decides directory locations, ownership and transport architecture. Do not assume Bike-Mate's decisions are correct merely because they exist. Preserve functional requirements, not accidental architecture. GUI dumb terminal for live operations, OSA transaction owner, ESP32 evidence producer and autonomous power controller.
+
+**DESIGN:** source remains ~/Documents/Arduino/motomate and ~/osa-server-repo; fixed build under motomate/build. Proposed archive root ~/moto-mate-drive with firmware/, monitor/, rides/, diagnostics/, settings/, quarantine/. Existing actual receipt, gzip, registry and OTA staging locations remain unchanged until a verified migration. Inventory, copy, verify raw/hash/decode and manifests, switch readers, then separately decide cleanup; no blind move/delete. Retain identity and receipts. OSA pushes authenticated HTTP multipart OTA; no esptool except USB commissioning/recovery. User-directed GUI design remains compact Arctic Qt6 instrument with separate maintenance/settings/OTA windows. See latest aihandover.md for staged versus tested state.
+
 ## Owner clarification — 2026-11-27: OTA ownership
 
 **AGREED:** Compile output always at the fixed build location. Human asks for OTA; OSA grabs the build, verifies checksum, compares ESP32 running revision with the acquired build revision and owns upload to ESP32. No GUI file picker or manually entered version; GUI is a dumb terminal for live operations. GUI settings requests also go through OSA.

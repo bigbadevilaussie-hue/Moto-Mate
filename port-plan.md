@@ -1,5 +1,7 @@
 # Moto-Mate — dependency-ordered port plan
 
+**Latest checkpoint 2026-11-27:** Read the first section of [aihandover.md](aihandover.md) before older entries. Firmware1.34, live OSA1.43 (51 tests + live collection passed), owner screenshot GUI2.02; staged OSA1.44/GUI2.03 not tested/deployed. Owner paused firmware to develop compact Qt6 GUI, OSA-owned OTA/settings. Next review regression results, qualify OSA jobs and GUI, then return to BLE-first bounded parked wake and synthetic ADC. Stage11/19/20 still open. See operating-design.md for new transport and directory rules.
+
 2026-11-26. Owner approved fresh setup/loop coordinator first; V1.04 foundation implemented, Arduino compile pending. Later subsystem patches remain individually scoped.
 Donor Bike-Mate V6.49 bc5766c319da25622db1f2c86b58339afd07d5ad. Destination V1.03 b2d36d88605a7b6ffeae97e979727b6713cb3b35. Source of findings: [TODO.md](TODO.md), 32 tracked donor source files, 47 open tickets (13 P0, 17 P1, 14 P2, 3 P3). Every ticket mapped below; mapping is not closure.
 

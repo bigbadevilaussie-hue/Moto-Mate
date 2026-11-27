@@ -1,5 +1,7 @@
 # Moto-Mate MkII
 
+**Start here:** [Current AI handover](aihandover.md) (2026-11-27), [operating design](operating-design.md), [GUI port](gui-port.md). Firmware1.34, live OSA1.43, GUI2.02 visually owner-verified; staged OSA1.44/GUI2.03 awaiting regression and owner-controlled deployment. Latest checkpoint supersedes older commissioning text below. Use tools/moto_build.py for fixed binary and revision/hash receipt; OSA owns OTA, GUI is terminal. No FIELD activation.
+
 ## Owner rule: Moto-Mate governs OSA
 
 **OWNER RULE — 2026-11-26: Moto-Mate dictates how OSA works from now on.** The owner explicitly authorises the technical lead to fix and rework OSA to meet Moto-Mate's requirements, rather than constrain the new firmware to OSA's historical architecture. This supersedes the earlier requirement for separate scope approval for OSA engineering changes. It does not authorise arbitrary changes to Bike-Mate firmware, protected ESP32 radio sequences, or other device firmware. Preserve the battery-first prime directive, the ESP32's autonomy, and OSA's role as sole BLE broker. Preserve working services and user-facing behaviour for Bike-Mate, Fan-Mate and Audio-Mate, especially Alexa telling the owner to check the bike, existing alerts, storage and OTA workflows. Compatibility is a behavioural requirement, not a mandate to retain flawed internals. Do not silently remove features or change alert routing. No automatic deployment: use small testable changes, regression tests and an owner-controlled cutover with rollback.
