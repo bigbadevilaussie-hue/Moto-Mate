@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.40 and V1.41 owner build PASS — 2026-11-27
+
+V1.40 compile flash1546577, RAM69660, binary1547168, MD5 89f017fc6b56855367740d1d34b5e4e1 SHA256 63d4fb6bcce45946b19098e04acb01150fe016fa484fa8db7ca908b321149c10. Superseded by V1.41 compile flash1546853/1966080, RAM69660/327680, binary1547440, MD5 38505dbbced5c74975deba2e2798fe39 SHA256 8415a64d794c5698bd8552b6f826afaf9a1339e75f82ef522b22f752c2177bc4. Both compile PASS, V1.41 OTA and BLK physical test pending. Last serial-confirmed running V1.39; first OTA from V1.39 cannot automatically resume maintenance. OSA1.46 host tests/deployment pending. No firmware changes in evidence checkpoint; FIELD disabled.
+
+
 ## V1.41 — BENCH TFT wake white-flash mitigation (2026-11-27)
 
 Owner reports white flash on each wake; V1.39 periodic refresh fix visually PASS. Owner approved backlight sequencing. NOMEN_TEC V2.0 photo matches reference module circuit U4 S8050, R5 1k base resistor, R6 10k VCC pull-up, R1 10 ohm LEDK resistor (https://funduinoshop.com/media/pdf/7c/25/56/F23109098.pdf p2). Direct GPIO4 -> BLK with TFT powered 3.3V is design intent; individual module polarity/current not measured. Do not apply 5V to GPIO. With power off connect only after confirming module matches circuit; first verify BLK low turns LED off and high turns on, current consistent with logic drive. No external IRLZ44N in latest layout; stale veroboard BOM/sensor row corrected, other unresolved hardware review unchanged.
