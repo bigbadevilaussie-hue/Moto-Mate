@@ -137,6 +137,8 @@ inline bool decodeV2(const uint8_t* in,size_t n,Settings& s) {
 }
 // Capability gates unchanged; new config fields are storage-only in V1.36.
 constexpr bool FIELD_READY=false;
+// Commissioning source selection is independent of the operating profile.
+constexpr bool ADC_SIMULATION_BUILD=true;
 constexpr bool BENCH_SLEEP_READY=true;
 inline bool fieldActive(const Settings& s) { return FIELD_READY && s.profile==Profile::Field; }
 inline bool benchSleepActive(const Settings& s) {
