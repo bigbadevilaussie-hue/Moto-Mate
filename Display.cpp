@@ -1,5 +1,6 @@
 #include "Display.h"
 #include "Config.h"
+#include "Hardware.h"
 #include <Arduino.h>
 #include <cstring>
 
@@ -125,7 +126,8 @@ void stopIntro() {
 } // namespace
 
 void displayBegin(bool animate) {
-  // Hardware owns BL. Do not drive GPIO4 high until its load is qualified.
+  // Keep the panel dark throughout hardware reset and initialisation.
+  hardwareBacklight(false);
   if (!tft.init()) {
     Serial.println("[TFT] FAIL: driver init");
     return;
@@ -147,7 +149,7 @@ void displayBegin(bool animate) {
   }
   introStart = millis();
   lastFrame = introStart - FRAME_MS;
-  Serial.printf("[TFT] INIT OK 160x128 RGB565; intro=%s; BL disabled\n",
+  Serial.printf("[TFT] INIT OK 160x128 RGB565; intro=%s; BL held off until first completed frame\n",
                 animating ? "enabled" : "fallback");
 }
 
@@ -165,10 +167,11 @@ void displayPoll(SplashMode mode) {
         introMode = mode;
         if (!drawSplash(intro, mode)) stopIntro();
       }
-      if (animating) { introFrame(elapsed); return; }
+      if (animating) { introFrame(elapsed); hardwareBacklight(true); return; }
     }
     if (animating && introMode == mode) {
       intro.pushSprite(0,0);
+      hardwareBacklight(true);
       drawn = true;
       lastMode = mode;
       stopIntro();
@@ -181,6 +184,7 @@ void displayPoll(SplashMode mode) {
   drawn = true;
   lastMode = mode;
   bool ok = drawSplash(tft, mode);
+  hardwareBacklight(ok);
   Serial.printf("[SPLASH] %s mode=%u (visual confirmation required)\n",
                 ok ? "SENT" : "FAIL", unsigned(mode));
 }
@@ -191,7 +195,7 @@ bool displaySleepCountdown(unsigned seconds) {
   drawn=false;
   liveDrawn=false;
   unsigned& previous=sleepShown;
-  if (previous==seconds) return true;
+  if (previous==seconds) return hardwareBacklight(true);
   const uint16_t black=0x0000, yellow=0xFEC0, shade=0xD480, white=0xFFFF, blue=0x65FF;
   if (previous==999 || seconds>previous) {
     tft.fillScreen(black);
@@ -226,18 +230,20 @@ bool displaySleepCountdown(unsigned seconds) {
   if (buffered) stripBuffer.pushSprite(0,95);
   previous=seconds;
   if (!seconds) releaseStrip();
-  return true;
+  return hardwareBacklight(true);
 }
 void displaySleepPanel() {
   if (!ready) return;
   stopIntro();
   releaseStrip();
+  hardwareBacklight(false);
   tft.fillScreen(uint16_t(0));
   tft.sleep();
   drawn=false;
 }
 void displayResumePanel() {
   if (!ready) return;
+  hardwareBacklight(false);
   tft.wakeup();
   releaseStrip();
   sleepShown=999;
@@ -307,4 +313,5 @@ void displayBenchLive(unsigned seconds,float voltage,float temperature,float hum
     endRow(95);
     strcpy(oldFooter,footer);
   }
+  hardwareBacklight(true);
 }
