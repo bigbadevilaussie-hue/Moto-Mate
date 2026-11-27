@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QFrame, QLabe
     QPushButton, QHBoxLayout, QVBoxLayout, QGridLayout, QStackedWidget,
     QScrollArea, QDoubleSpinBox, QMessageBox, QPlainTextEdit, QSizeGrip)
 from .qt_theme import apply_arctic_theme
-from .qt_model import GUI_VERSION, ROUTES, COLLECT, validate, link_label, age_label, budget
+from .qt_model import GUI_VERSION, ROUTES, COLLECT, COMMANDS, MAINT, MAINT_STATUS, validate, link_label, age_label, budget
 
 BASE = "http://127.0.0.1:9999"
 LIMIT = 65536
@@ -23,8 +23,8 @@ class OsaClient(QObject):
         self.manager.setProxy(QNetworkProxy(QNetworkProxy.ProxyType.NoProxy))
         self.pending = {}
 
-    def request(self, path, explicit=False):
-        if path not in ROUTES and not (path == COLLECT and explicit):
+    def request(self, path, explicit=False, payload=None):
+        if path not in ROUTES and not (path in COMMANDS and explicit):
             raise ValueError("route not allowed")
         if path in self.pending:
             return
@@ -32,8 +32,13 @@ class OsaClient(QObject):
         req.setTransferTimeout(3000)
         req.setAttribute(QNetworkRequest.Attribute.RedirectPolicyAttribute,
                          QNetworkRequest.RedirectPolicy.ManualRedirectPolicy)
-        reply = (self.manager.post(req, QByteArray()) if path == COLLECT
-                 else self.manager.get(req))
+        if path in COMMANDS:
+            if payload is not None:
+                req.setHeader(QNetworkRequest.KnownHeaders.ContentTypeHeader, "application/json")
+            body = QByteArray(json.dumps(payload).encode("utf-8")) if payload is not None else QByteArray()
+            reply = self.manager.post(req, body)
+        else:
+            reply = self.manager.get(req)
         self.pending[path] = reply
         # Bound accumulation even if the server returns a malformed response.
         reply.setReadBufferSize(LIMIT + 1)
@@ -233,6 +238,10 @@ class Dashboard(QMainWindow):
         self.client.request(COLLECT, explicit=True)
 
     def update_value(self, path, value):
+        if path in COMMANDS and path.startswith(MAINT):
+            self.maintenance.pending = False
+            self.maintenance.request_note.setText("OSA accepted request.")
+            path = MAINT_STATUS
         if path == COLLECT:
             self.post_pending = False
             self.collect_note.setText("OSA accepted collection request.")
@@ -242,7 +251,11 @@ class Dashboard(QMainWindow):
         self.render()
 
     def update_error(self, path, error):
-        if path == COLLECT:
+        if path in COMMANDS and path.startswith(MAINT):
+            self.maintenance.pending = False
+            self.maintenance.request_note.setText("Request not confirmed: " + error)
+            self.client.request(MAINT_STATUS)
+        elif path == COLLECT:
             self.post_pending = False
             self.collect_note.setText("Request not confirmed: " + error)
             self.client.request("/moto/log/status")

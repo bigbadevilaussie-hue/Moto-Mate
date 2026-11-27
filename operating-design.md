@@ -1,5 +1,11 @@
 # Moto-Mate — agreed operating design and development direction
 
+## Owner clarification — 2026-11-27: OTA ownership
+
+**AGREED:** Compile output always at the fixed build location. Human asks for OTA; OSA grabs the build, verifies checksum, compares ESP32 running revision with the acquired build revision and owns upload to ESP32. No GUI file picker or manually entered version; GUI is a dumb terminal for live operations. GUI settings requests also go through OSA.
+
+**DESIGN:** compile wrapper publishes build/motomate.ino.bin and hash/revision receipt; OSA validates both, stages its own hash-verified copy, only uploads a newer revision by default, then verifies reboot/alternate slot/version. Same-revision skip and older-revision refusal are conservative defaults, not owner-defined rollback policy. Existing CLI remains recovery path. No automatic firmware update or wake.
+
 ## Owner clarification — 2026-11-27: parked operation and transport priority
 
 **AGREED:** The motorcycle is parked approximately 90% of the time, in a carport at Atkinsons Dam, shaded approximately 95% of the time. The owner reports first-attempt starting after eight weeks parked with the original low-parasitic-load motorcycle. Preserve that practical baseline; do not assume the original parked current is known. The SHT40 is the intended ambient temperature/humidity evidence source; no additional battery temperature sensor requested. Day/night thermal cycles, humidity and condensation risk, rested voltage trends and crank reserve are central diagnostic concerns. Ambient readings are not direct internal battery temperature measurements.

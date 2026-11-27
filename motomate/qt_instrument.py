@@ -192,11 +192,5 @@ class Instrument(Dashboard):
         self.maintenance.refresh_controls()
 
     def closeEvent(self, event):
-        if self.maintenance.busy:
-            QMessageBox.information(self, "Operation active", "Wait for the active maintenance operation to finish before quitting.")
-            event.ignore()
-            return
-        if self.post_pending:
-            event.ignore()
-            return
+        # OSA owns active jobs; closing the GUI does not cancel them.
         super().closeEvent(event)

@@ -1,9 +1,12 @@
 """Pure host-side presentation rules; never communicates with the motorcycle."""
 import math
 
-GUI_VERSION = "2.02"
-ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status")
+GUI_VERSION = "2.03"
+ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status", "/moto/maintenance/status")
 COLLECT = "/moto/log/start"
+MAINT = "/moto/maintenance/"
+MAINT_STATUS = MAINT + "status"
+COMMANDS = (COLLECT, *(MAINT + action for action in ("connect","end","read","write","ota")))
 
 
 def validate(path, value):
@@ -14,7 +17,7 @@ def validate(path, value):
             raise ValueError("wrong device or version")
         if type(value.get("alive")) is not bool or type(value.get("connected")) is not bool:
             raise ValueError("missing connection flags")
-    elif path in (*ROUTES[1:], COLLECT):
+    elif path in (*ROUTES[1:], *COMMANDS):
         if not isinstance(value.get("phase"), str):
             raise ValueError("missing phase")
         if path in ("/moto/log/status", COLLECT) and value.get("device_deletion") is not False:
