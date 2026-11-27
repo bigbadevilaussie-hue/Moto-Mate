@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 void otaInit();
-void otaStart();
+void otaStart(uint64_t deadlineUs);
 void otaStop();
 void otaPoll();
 bool otaRebootPending();
