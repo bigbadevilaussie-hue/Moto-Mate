@@ -1,5 +1,10 @@
 # Moto-Mate — Ordered Hardware and Enclosure Notes
 
+## Current hardware availability — 2026-11-27
+
+Owner confirms simple breadboard commissioning only at present. Production stripboard and external RTC module are not available yet. Do not schedule or claim stripboard, external RTC, complete 12 V power-path or on-bike qualification. Continue BENCH firmware, button, coordinator, settings, GUI/OSA and available-peripheral tests on the existing breadboard. External RTC absence must be nonfatal; use existing internal monotonic/RTC timing and qualified OSA clock synchronisation, with explicit time validity. Do not assume other peripherals are connected without evidence. Production electrical/current and external RTC checks remain deferred, not passed. No firmware or hardware design change in this checkpoint.
+
+
 Updated 2026-11-25. Owner-supplied order history, display specification image and physical stripboard confirmation. This is a procurement/reference inventory, not a final BOM or evidence that every item has arrived, meets its advertised rating or is installed. Product links identify ordered variants; listing claims are not independently verified. Private order IDs and account links are intentionally omitted. Quantities below are purchased quantities, not build requirements.
 
 ## Electronics
