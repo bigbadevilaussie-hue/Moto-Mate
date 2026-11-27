@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.44 owner OTA PASS / I2C detection FAIL — 2026-11-27
+
+Owner serial confirms OTA image 1550384 bytes committed, original upload splash mode4 sent, V1.44 software reset and retained original maintenance lease 135816ms, WiFi 1045ms RSSI -31, 8.5dBm and 800ms guard, OTA READY. I2C GPIO6 SDA and GPIO7 SCL both idle HIGH at 100kHz; all targeted addresses 0x44, 0x51, 0x68, 0x69 return result2 NACK. RTC not fitted. MPU setup repeatedly absent; no valid SHT sample. No evidence of stuck-low idle bus, but physical continuity, actual sensor supply and pin mapping unverified. Check shared four-wire connection before further software changes; leave AD0 unchanged. FIELD disabled. Host OTA receipt and visual upload progress not independently supplied.
+
+
 ## V1.44 owner build PASS — 2026-11-27
 
 Owner compile receipt: flash 1549785/1966080 (78%), globals 69700/327680 (21%), free 257980, image 1550384 bytes, MD5 9cbb6550003d8d3254b8c65550d1e386, SHA256 3d5d21f6eb0775cbe7599763cee5fca3ab96cfd522223533f1d90fe6c4863a99. OTA and physical I2C diagnostic results pending. Owner reports TFT C and RH without numbers on V1.43; SHT40 validity not established. No wiring change requested, FIELD disabled.
