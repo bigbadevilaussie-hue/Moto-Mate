@@ -1,5 +1,7 @@
 # Moto-Mate MkII - Veroboard & Wiring Guide
 
+**Backlight reconciliation (2026-11-27):** latest moto14wires30cuts.json and codeprt.md specify GPIO4 directly to BLK, active-high, with module powered at 3.3V. Owner photo of NOMEN_TEC V2.0 shows U4 and R1/R5/R6, consistent with the [reference ST7735 module schematic](https://funduinoshop.com/media/pdf/7c/25/56/F23109098.pdf), which uses an onboard S8050, 1k base resistor and 10k pull-up. Exact individual board current and polarity still require BENCH verification. Obsolete IRLZ44N entries removed below; no other circuit reconciliation claimed. Full board fabrication still requires review.
+
 ## Netlist (Connections) - Corrected by Uncle Claude
 
 ### Power Input & Rail Generation
@@ -51,7 +53,7 @@
 | :--- | :--- |
 | SHT40 | VCC -> 3.3V, GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
 | MPU-6050 | VCC -> 3.3V (Always-on), GND -> GND, SDA -> GPIO 6, SCL -> GPIO 7 |
-| ST7735 TFT | VCC -> 3.3V, GND -> GND, CS -> GPIO 10, RESET -> GPIO 8, DC -> GPIO 9, MOSI -> GPIO 11, SCK -> GPIO 12, LED -> IRLZ44N Drain |
+| ST7735 TFT | VCC -> 3.3V, GND -> GND, CS -> GPIO 10, RESET -> GPIO 8, DC -> GPIO 9, MOSI -> GPIO 11, SCK -> GPIO 12, BLK -> GPIO 4 (3.3V logic, active-high) |
 
 ---
 
@@ -69,7 +71,6 @@
 | 1 | MP1584EN Buck Converter (12V -> 5V) | Switched Power (GPS/MPU/Fan) |
 | 1 | IRF4905 P-Channel MOSFET | 12V High-Side Switch |
 | 2 | 2N2222 NPN Transistor | MOSFET Driver & Buzzer Driver (SFM-27) |
-| 1 | IRLZ44N N-Channel MOSFET | TFT Backlight Switch |
 | 1 | 30x30x10mm 5V Fan (0.15A) | Parts Cooler |
 | 1 | 16mm Panel-Mount Momentary Push Button | Wake Button |
 | 1 | 12V 20A Circular Rocker Switch (20mm) | Kill Switch |
@@ -81,7 +82,7 @@
 | 1 | Resistor | 100k (Voltage Divider Bottom) |
 | 1 | Resistor | 10k (MOSFET Gate Pull-up) |
 | 1 | Resistor | 10k (Wake Button Pull-up) |
-| 2 | Resistor | 10k (2N2222 Base Pull-down, IRLZ44N Gate Pull-down) |
+| 1 | Resistor | 10k (2N2222 Base Pull-down) |
 | 3 | Resistor | 1k (MOSFET Driver, Buzzer, GPS TX) |
 | 2 | Resistor | 330 ohm (Red LED, Green LED) |
 | 1 | Capacitor | 1000uF 25V Electrolytic (12V Bulk) |
