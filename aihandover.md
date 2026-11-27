@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.44 owner build PASS — 2026-11-27
+
+Owner compile receipt: flash 1549785/1966080 (78%), globals 69700/327680 (21%), free 257980, image 1550384 bytes, MD5 9cbb6550003d8d3254b8c65550d1e386, SHA256 3d5d21f6eb0775cbe7599763cee5fca3ab96cfd522223533f1d90fe6c4863a99. OTA and physical I2C diagnostic results pending. Owner reports TFT C and RH without numbers on V1.43; SHT40 validity not established. No wiring change requested, FIELD disabled.
+
+
 ## V1.44 — BENCH I2C sensor diagnosis (2026-11-27)
 
 Owner reports MPU absent while wiring sensors and requires original four-wire hookup, no AD0 wiring change. Targeted startup diagnostic probes SHT40 0x44, RTC 0x51, MPU 0x68 and 0x69, logs SDA/SCL idle levels, Wire result and WHO_AM_I on responding MPU addresses. Bounded four-address probe, no general scan or bus pin reconfiguration. MPU driver prefers configured 0x68; on clean NACK only, accepts alternate 0x69 only with WHO_AM_I 0x68, locks selected address before writes and uses same address for sampling/configuration/sleep verification. First valid SHT CRC-decoded temperature/RH and first valid MPU accelerometer/gyro values reported in serial per boot; setup results and final quiesce states reported. No changed sensor wiring, radio, maintenance, TFT or sleep policies. V1.44 staged main; owner compile, OTA and physical sensor results pending. V1.43 last running with full maintenance lifecycle PASS. FIELD remains disabled.
