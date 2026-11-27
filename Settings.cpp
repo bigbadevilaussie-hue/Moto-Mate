@@ -10,6 +10,22 @@ constexpr const char* KEY="config_v2";
 mm::Settings current;
 bool healthy=false;
 const char* state="not_loaded";
+constexpr const char* FAKE_KEY="fake_adc_mv";
+constexpr uint16_t FAKE_DEFAULT=12830;
+uint16_t fakeAdcMv=FAKE_DEFAULT;
+bool fakeAdcOK=false;
+void loadFakeAdc() {
+  nvs_handle_t h;
+  fakeAdcOK=false;
+  esp_err_t e=nvs_open(NS,NVS_READONLY,&h);
+  if(e==ESP_ERR_NVS_NOT_FOUND) { fakeAdcMv=FAKE_DEFAULT; fakeAdcOK=true; return; }
+  if(e!=ESP_OK) return;
+  uint32_t mv=0;
+  e=nvs_get_u32(h,FAKE_KEY,&mv);
+  nvs_close(h);
+  if(e==ESP_ERR_NVS_NOT_FOUND) { fakeAdcMv=FAKE_DEFAULT; fakeAdcOK=true; }
+  else if(e==ESP_OK && mv<=20000) { fakeAdcMv=uint16_t(mv); fakeAdcOK=true; }
+}
 
 esp_err_t readLegacy(uint32_t& word) {
   nvs_handle_t handle;
@@ -68,6 +84,7 @@ void settingsBegin() {
     // An existing unreadable v2 record must NEVER fall back to stale v1.
     state="read_failed";
   }
+  loadFakeAdc();
   Serial.printf("[NVS] settings=%s schema=2 requested=%s\n",state,
       current.profile==mm::Profile::Bench?"BENCH":"FIELD");
 }
@@ -87,6 +104,26 @@ bool settingsSave(const mm::Settings& next) {
   }
   current=next;
   state="saved";
+  return true;
+}
+bool settingsFakeAdcGet(uint16_t& mv) {
+  if(!healthy || !fakeAdcOK || current.profile!=mm::Profile::Bench) return false;
+  mv=fakeAdcMv; return true;
+}
+bool settingsFakeAdcSet(uint16_t mv) {
+  if(!healthy || current.profile!=mm::Profile::Bench || mv>20000) return false;
+  if(fakeAdcOK && fakeAdcMv==mv) return true;
+  nvs_handle_t h;
+  esp_err_t e=nvs_open(NS,NVS_READWRITE,&h);
+  if(e!=ESP_OK) return false;
+  e=nvs_set_u32(h,FAKE_KEY,mv);
+  if(e==ESP_OK) e=nvs_commit(h);
+  uint32_t check=0;
+  if(e==ESP_OK) e=nvs_get_u32(h,FAKE_KEY,&check);
+  nvs_close(h);
+  if(e!=ESP_OK || check!=mv) { fakeAdcOK=false; return false; }
+  fakeAdcMv=mv; fakeAdcOK=true;
+  Serial.printf("[ADC] synthetic BENCH set=%u mV; persisted\n",unsigned(mv));
   return true;
 }
 String settingsJson() {
@@ -113,6 +150,9 @@ String settingsJson() {
   first=false; body += "\"" #name "\":"; body += long(current.name);
   MM_SETTINGS_FIELDS(MM_JSON)
 #undef MM_JSON
-  body += "}}";
+  body += "},\"fake_adc_mv\":";
+  uint16_t mv=0;
+  if(settingsFakeAdcGet(mv)) body+=String(unsigned(mv)); else body+="null";
+  body+="}";
   return body;
 }
