@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "OtaService.h"
+#include "OtaLease.h"
 #include "Hardware.h"
 #include "Settings.h"
 #include "MotoClock.h"
@@ -79,6 +80,9 @@ void status() {
       (receiving||rebootAt)?"true":"false");
   String body(out);
   body.remove(body.length()-1);
+  body += ",\"maintenance_remaining_ms\":";
+  const uint64_t now=esp_timer_get_time();
+  body += String((unsigned long)(leaseEnd>now?(leaseEnd-now)/1000:0));
   body += hardwareStatus();
   body += ",\"settings\":";
   body += settingsJson();
@@ -420,7 +424,13 @@ void otaStop() {
 bool otaRebootPending() { return rebootAt != 0; }
 void otaPoll() {
   if (rebootAt) {
-    if (uint64_t(esp_timer_get_time())>=rebootAt) ESP.restart();
+    if (uint64_t(esp_timer_get_time())>=rebootAt) {
+      const auto* target=esp_ota_get_boot_partition();
+      const auto* running=esp_ota_get_running_partition();
+      if (target && running && target->address!=running->address)
+        otaLeaseArm(leaseEnd,target->address);
+      ESP.restart();
+    }
     return;
   }
   server.handleClient();
