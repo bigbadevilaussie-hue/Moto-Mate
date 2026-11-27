@@ -172,15 +172,15 @@ void finishRequest() {
       abortUpload("maintenance deadline");
       server.send(403,"text/plain","maintenance expired");
     } else if (!Update.end(false)) {
-    abortUpload("image validation or commit failed");
-    server.send(500,"text/plain",failure);
-  } else {
-    complete = false;
-    server.send(200,"application/json","{\"accepted\":true,\"reboot_pending\":true}");
-    rebootAt = esp_timer_get_time()+500000;
-    Serial.println("[OTA] image committed; reboot pending, verify new boot remotely");
-    if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
-      displayFirmwareUpload(UploadView::Committed,written,expected,leaseEnd);
+      abortUpload("image validation or commit failed");
+      server.send(500,"text/plain",failure);
+    } else {
+      complete = false;
+      server.send(200,"application/json","{\"accepted\":true,\"reboot_pending\":true}");
+      rebootAt = esp_timer_get_time()+500000;
+      Serial.println("[OTA] image committed; reboot pending, verify new boot remotely");
+      if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
+        displayFirmwareUpload(UploadView::Committed,written,expected,leaseEnd);
     }
   }
   sawFile = false;
