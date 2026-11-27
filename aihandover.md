@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## Current hardware availability — 2026-11-27
+
+Owner confirms simple breadboard commissioning only at present. Production stripboard and external RTC module are not available yet. Do not schedule or claim stripboard, external RTC, complete 12 V power-path or on-bike qualification. Continue BENCH firmware, button, coordinator, settings, GUI/OSA and available-peripheral tests on the existing breadboard. External RTC absence must be nonfatal; use existing internal monotonic/RTC timing and qualified OSA clock synchronisation, with explicit time validity. Do not assume other peripherals are connected without evidence. Production electrical/current and external RTC checks remain deferred, not passed. No firmware or hardware design change in this checkpoint.
+
+
 ## Maintenance/display clarification — 2026-11-27
 
 Owner: normal BENCH cycles show live instrumentation when awake and sleeping emoji during sleep. BENCH does not imply maintenance. Only physical wake-button long press starts maintenance and enables its Wi-Fi services. Normal BENCH reset/timer wake must not automatically open maintenance; existing commissioning behaviour remains historical until replaced. OSA discovers already-active authorised sessions without commanding entry or adding device wakes; GUI consumes OSA cached lease status, enables maintenance-only controls while a fresh authenticated device lease is valid, greys/disables them on inactive, stale, disconnected or expired status. No activation control. Device rechecks lease for every privileged operation; absolute 180 s from physical acceptance, never renewed. History/graphs/analysis remain available offline. FIELD display stays off under latest owner direction; explicit physical battery-test/Rider Ready display exceptions are not separately confirmed. Panic/urgent Wi-Fi transport remains separate from maintenance authority; cannot grant OTA or settings. Current TFT is ST7735, not OLED (owner colloquial description). Requirements, not implemented.
