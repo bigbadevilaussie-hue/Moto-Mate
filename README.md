@@ -1,5 +1,18 @@
 # Moto-Mate MkII
 
+## Current owner direction — 2026-11-27
+
+This section supersedes conflicting historical design text below; it describes requirements, not implemented or tested behaviour.
+
+- Technical lead owns routine coding, naming, defaults, units, validation, configuration schema and implementation choices. Owner directs requirements and may intervene. Maintain the handover, operating design, settings design, port plan and README as work progresses. Preserve protected radio approval boundaries, locked logging contract, owner-controlled physical tests/deployment and no FIELD activation.
+- Physical GPIO13 long press is the ONLY maintenance entry. No GUI, OSA, BLE, Wi-Fi or queued remote entry; remove activation UI and reject remote entry at the authority boundary. GUI may attach to an existing device-authorised lease. OTA admission requires that lease. Absolute 180 s monotonic deadline, no renewal or reboot reset. BENCH commissioning bypasses are historical test behaviour, not production authorisation.
+- Single click Rider Ready 30 s; double click Battery Test 10 s; long press maintenance, proposed default 2 s (V1.35 shadow uses 1.5 s); double window 350 ms. One debouncer (30 ms), nonblocking mutually exclusive events, no lease extension, stuck input protection. Real boot capture and physical qualification remain open.
+- Same firmware BENCH/FIELD NVS profile. Configurable BENCH awake/sleep defaults 30/30 s; FIELD sleep default 300 s now configurable (supersedes fixed-sleep NVS prohibition); ordinary FIELD awake ceiling 10 s, sleep sooner. No civil-time scheduling. Changing FIELD cadence requires explicit reconciliation with locked schema-1 monitor cadence before enabling; do not silently change wire semantics.
+- FIELD screen never on per latest owner wording; whether deliberate physical button screens and PANIC are exceptions remains unresolved. BENCH normal voltage/temp instrumentation then sleeping emoji. Preserve sacred cold-start cues subject to resolving display policy.
+- Maintenance temporarily suspends normal battery-first operating policy for human intervention; safe electrical/flash limits and lease deadline still apply. Engine start/stop, crank sag discrimination and auxiliary rail safety require qualified evidence.
+- No firmware changes in this documentation checkpoint. V1.35 wake policy staged/shadow only; V1.34 last confirmed firmware; OSA1.44 deployed with 59/59 tests, GUI2.04 icon visually confirmed; standalone bundle and full lifecycle remain unqualified.
+
+
 **Start here:** [Current AI handover](aihandover.md) (2026-11-27), [operating design](operating-design.md), [GUI port](gui-port.md). Firmware1.34, live OSA1.43, GUI2.02 visually owner-verified; staged OSA1.44/GUI2.03 awaiting regression and owner-controlled deployment. Latest checkpoint supersedes older commissioning text below. Use tools/moto_build.py for fixed binary and revision/hash receipt; OSA owns OTA, GUI is terminal. No FIELD activation.
 
 ## Owner rule: Moto-Mate governs OSA
