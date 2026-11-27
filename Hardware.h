@@ -6,6 +6,8 @@
 // No load activation, display init or battery protection until wiring is qualified.
 void hardwareBegin(mm::TimeUs now);
 void hardwareReportBoot();
+// Active-high control input on BENCH TFT module; caller owns display policy.
+bool hardwareBacklight(bool on);
 void hardwarePoll(mm::TimeUs now);
 void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress);
 float hardwareBenchVoltage(mm::TimeUs now);
@@ -13,7 +15,7 @@ mm::Gesture hardwareTakeGesture();
 bool hardwareGesturePending();
 String hardwareStatus();
 
-// Explicit bench test only; caller must have never started the radios.
+// Caller must verify radios are off before arming sleep.
 bool hardwareButtonReleased(mm::TimeUs now);
-bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake);
+bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake, bool keepBacklight=false);
 void hardwareCancelBenchSleep();
