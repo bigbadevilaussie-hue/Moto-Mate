@@ -10,6 +10,7 @@
 #include <esp_wifi.h>
 #include <atomic>
 #include <cmath>
+#include <cstdio>
 
 namespace {
 constexpr char NAME[]="Moto-Mate";
