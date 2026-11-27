@@ -30,7 +30,7 @@ class EmptyTrend(QWidget):
 
 
 class Instrument(Dashboard):
-    def __init__(self):
+    def __init__(self, *, polling=True):
         # Reuse tested page builders and cache handling, not the wide layout.
         QMainWindow.__init__(self)
         self.setWindowTitle(f"Moto-Mate • Arctic {GUI_VERSION}")
@@ -131,8 +131,9 @@ class Instrument(Dashboard):
         self.animation.finished.connect(self.drawer_finished)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.client.poll)
-        self.timer.start(5000)
-        QTimer.singleShot(0, self.client.poll)
+        if polling:
+            self.timer.start(5000)
+            QTimer.singleShot(0, self.client.poll)
 
     def add_tool(self, title, page, width, height):
         window = QMainWindow(self, Qt.WindowType.Window)

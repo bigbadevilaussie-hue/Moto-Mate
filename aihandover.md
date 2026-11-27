@@ -2,6 +2,8 @@
 
 ## CURRENT CHECKPOINT — 2026-11-27 (read this first)
 
+**Standalone build:** Adapted StripSolve's packaging pipeline (6274f09ce774d77c96c301ea5e972a22318b5bdb) to Moto-Mate. Run bash build_mac_app.sh after installing PyInstaller into the Qt venv and verifying the locked icon assets. Desktop Moto-Mate.app installed only after source/frozen offline smoke and codesign checks, no overwrite. Existing standalone build has not yet run on target Mac. OSA remains a separate service. No firmware/splash change.
+
 **Latest GUI-only addition:** V2.04 locks the owner-approved Arctic Sprint ST app icon. Qt icon integration and optional PyInstaller macOS build script committed; binary pack must be extracted into motomate/assets/ by owner and committed separately. Verify with tools/verify_gui_icon.py. Existing ESP32 splash untouched. V2.03 OTA and OSA V1.44 still staged/unqualified; icon changes do not affect these.
 
 This section supersedes historical checkpoints below. Older entries are evidence, not instructions to repeat old commissioning. Owner calls this AI technical lead Brother; Sister works on StripSolve independently. Read operating-design.md, log-contract.md, gui-port.md and the current source before patching. Owner permits recoding architecture and OSA as required, with separate approval for protected radio changes. No automatic deployment, no field activation, preserve other products. Owner prefers a single pasteable command block beginning with cd, no repeated questions, and real GitHub commits rather than merely suggesting edits.

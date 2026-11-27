@@ -287,6 +287,10 @@ class Dashboard(QMainWindow):
 
 
 def main():
+    smoke = len(sys.argv) == 3 and sys.argv[1] == "--smoke-test"
+    if smoke:
+        from .qt_smoke import run_smoke
+        return run_smoke(sys.argv[2])
     app = QApplication(sys.argv)
     app.setApplicationName("Moto-Mate")
     from .qt_icon import app_icon
