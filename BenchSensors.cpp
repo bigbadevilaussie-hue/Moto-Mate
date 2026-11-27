@@ -125,6 +125,10 @@ bool sensorsQuiesce() {
 void sensorsResume() {
   paused=false; shtNext=mpuNext=0;
 }
+void sensorsBenchEnvironment(uint64_t now,float& temperature,float& humidity) {
+  const bool fresh=shtValid && now>=shtAt && now-shtAt<=3000000ULL;
+  temperature=fresh?temp:NAN; humidity=fresh?rh:NAN;
+}
 String sensorsJson() {
   const uint64_t now=esp_timer_get_time();
   const bool sv=shtValid && now-shtAt<=3000000ULL;
