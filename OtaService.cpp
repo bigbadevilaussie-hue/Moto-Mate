@@ -178,7 +178,8 @@ void setSettings() {
       (sleep!="0" && sleep!="1") || (verbose!="0" && verbose!="1")) {
     server.send(400,"text/plain","invalid settings"); return;
   }
-  mm::Settings next;
+  auto next=settingsCurrent();
+  next.benchSleepLog=false; // legacy POST disarms one-shot logging as before
   next.profile=profile=="BENCH"?mm::Profile::Bench:mm::Profile::Field;
   next.benchSleep=sleep=="1";
   next.verbose=verbose=="1";
