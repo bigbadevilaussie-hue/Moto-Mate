@@ -113,10 +113,10 @@ void releaseStrip() {
   if (stripReady) stripBuffer.deleteSprite();
   stripReady=false; stripFailed=false; liveDrawn=false;
 }
-bool prepareStrip() {
+bool prepareStrip(int height=33) {
   if (!stripReady && !stripFailed) {
     stripBuffer.setColorDepth(16);
-    stripReady=stripBuffer.createSprite(160,33)!=nullptr;
+    stripReady=stripBuffer.createSprite(160,height)!=nullptr;
     stripFailed=!stripReady;
     if (stripFailed) Serial.println("[TFT] strip allocation failed; partial direct redraw fallback");
   }
@@ -326,17 +326,22 @@ namespace {
 constexpr uint16_t SERVICE_BLACK=0x0000, SERVICE_WHITE=0xffff, SERVICE_CYAN=0x07ff,
                    SERVICE_AMBER=0xffe0, SERVICE_RED=0xf800, SERVICE_GREEN=0x07e0,
                    SERVICE_TRACK=0x2104;
+constexpr int DETAIL_Y=81, DETAIL_H=29; // Original splash detail area, ends before footer at 110.
 unsigned remainingSeconds(uint64_t deadlineUs) {
   const uint64_t now=esp_timer_get_time();
   return deadlineUs>now?unsigned((deadlineUs-now+999999ULL)/1000000ULL):0;
 }
-void serviceText(lgfx::LGFXBase& target,const char* text,int y,const lgfx::IFont* font,uint16_t color) {
+void serviceText(lgfx::LGFXBase& target,const char* text,int top,int height,const lgfx::IFont* font) {
   target.setTextDatum(lgfx::textdatum_t::top_left);
   target.setTextSize(1);
   target.setFont(font);
-  if (target.textWidth(text)>152) target.setFont(&lgfx::fonts::FreeSansBold9pt7b);
-  target.setTextColor(color);
-  target.drawString(text,(160-target.textWidth(text))/2,y);
+  if (target.textWidth(text)>148 || target.fontHeight()>height)
+    target.setFont(&lgfx::fonts::DejaVu9);
+  const int w=target.textWidth(text),h=target.fontHeight();
+  if (w<=148 && h<=height) {
+    target.setTextColor(SERVICE_WHITE);
+    target.drawString(text,(160-w)/2,top+(height-h)/2);
+  }
 }
 bool serviceEntry(SplashMode mode) {
   if (drawn && lastMode==mode) return false;
@@ -348,31 +353,25 @@ bool serviceEntry(SplashMode mode) {
   serviceSeconds=servicePercent=serviceStage=999;
   serviceAccepted=serviceTotal=0;
   serviceFrameMs=0;
-  tft.fillScreen(SERVICE_BLACK);
-  serviceText(tft,"MOTO-MATE",3,&lgfx::fonts::FreeSansBold12pt7b,SERVICE_WHITE);
-  tft.drawFastHLine(8,27,144,SERVICE_RED);
-  tft.drawFastHLine(8,29,144,SERVICE_TRACK);
-  serviceText(tft,mode==SplashMode::FirmwareUpdate?"FIRMWARE UPLOAD":"MAINTENANCE",
-              34,&lgfx::fonts::FreeSansBold9pt7b,SERVICE_CYAN);
+  // Preserve the commissioned JPEG artwork, antialiased mode heading,
+  // version footer, colors and positioning. Only the detail band changes.
+  const bool ok=drawSplash(tft,mode);
+  Serial.printf("[SPLASH] %s mode=%u; original artwork retained\n",ok?"SENT":"FAIL",unsigned(mode));
   return true;
 }
-void serviceStrip(int y,const char* headline,const char* footer,unsigned pct,uint16_t color,const char* secondary=nullptr) {
-  const bool buffered=prepareStrip();
-  // If the temporary buffer cannot be allocated, leave the static header
-  // intact and redraw only the affected region; no effect on OTA or lease.
+void serviceDetail(const char* headline,const char* secondary,unsigned pct,uint16_t color) {
+  const bool buffered=prepareStrip(DETAIL_H);
   lgfx::LGFXBase& target=buffered?static_cast<lgfx::LGFXBase&>(stripBuffer):static_cast<lgfx::LGFXBase&>(tft);
-  const int base=buffered?0:y;
+  const int base=buffered?0:DETAIL_Y;
   if (buffered) stripBuffer.fillScreen(SERVICE_BLACK);
-  else tft.fillRect(0,y,160,33,SERVICE_BLACK);
-  if (headline) serviceText(target,headline,base,&lgfx::fonts::FreeSansBold12pt7b,color);
-  if (footer) serviceText(target,footer,base+(headline?21:6),&lgfx::fonts::DejaVu9,SERVICE_WHITE);
-  if (secondary) serviceText(target,secondary,base+19,&lgfx::fonts::DejaVu9,SERVICE_AMBER);
-  if (pct<=100) {
-    target.fillRect(8,base+23,144,7,SERVICE_TRACK);
-    if (pct) target.fillRect(8,base+23,int(144*pct/100),7,color);
-    for (int x=20;x<152;x+=12) target.drawFastVLine(x,base+23,7,SERVICE_BLACK);
-  }
-  if (buffered) stripBuffer.pushSprite(0,y);
+  else tft.fillRect(0,DETAIL_Y,160,DETAIL_H,SERVICE_BLACK);
+  serviceText(target,headline,base,13,&lgfx::fonts::DejaVu12);
+  serviceText(target,secondary,base+13,11,&lgfx::fonts::DejaVu9);
+  if (pct>100) pct=100;
+  target.fillRect(8,base+25,144,3,SERVICE_TRACK);
+  if (pct) target.fillRect(8,base+25,int(144*pct/100),3,color);
+  for (int x=20;x<152;x+=12) target.drawFastVLine(x,base+25,3,SERVICE_BLACK);
+  if (buffered) stripBuffer.pushSprite(0,DETAIL_Y);
 }
 }
 void displayMaintenance(bool connected,uint64_t deadlineUs) {
@@ -380,12 +379,10 @@ void displayMaintenance(bool connected,uint64_t deadlineUs) {
   const unsigned seconds=remainingSeconds(deadlineUs);
   const bool first=serviceEntry(SplashMode::Maintenance);
   if (!first && serviceSeconds==seconds && serviceConnected==connected) return;
-  char timer[12],footer[32];
-  snprintf(timer,sizeof(timer),"%02u:%02u",seconds/60,seconds%60);
-  snprintf(footer,sizeof(footer),"%s  /  V%s",connected?"WI-FI READY":"CONNECTING",MOTO_MATE_VERSION);
-  // 54..86: large time and segmented lease bar; 95..127: link label.
-  serviceStrip(54,timer,nullptr,seconds*100/180,seconds<=30?SERVICE_AMBER:SERVICE_CYAN);
-  serviceStrip(95,nullptr,footer,101,SERVICE_CYAN,"AUTO EXIT AT ZERO");
+  char timer[24];
+  snprintf(timer,sizeof(timer),"EXIT IN %02u:%02u",seconds/60,seconds%60);
+  serviceDetail(timer,connected?"WI-FI READY":"CONNECTING",seconds*100/180,
+                seconds<=30?SERVICE_AMBER:SERVICE_CYAN);
   serviceSeconds=seconds;
   serviceConnected=connected;
   hardwareBacklight(true);
@@ -399,22 +396,19 @@ void displayFirmwareUpload(UploadView stage,size_t accepted,size_t total,uint64_
   if (!first && st==serviceStage && now-serviceFrameMs<250) return;
   if (!first && st==serviceStage && pct==servicePercent && seconds==serviceSeconds &&
       accepted==serviceAccepted && total==serviceTotal) return;
-  const char* label=stage==UploadView::Receiving?"UPLOADING":
-                    stage==UploadView::Verifying?"VERIFYING":
-                    stage==UploadView::Committed?"REBOOTING":"UPLOAD FAILED";
   const uint16_t color=stage==UploadView::Failed?SERVICE_RED:
                        stage==UploadView::Committed?SERVICE_GREEN:SERVICE_AMBER;
-  char headline[20],footer[40];
-  if (stage==UploadView::Receiving) snprintf(headline,sizeof(headline),"%u%%",pct);
-  else snprintf(headline,sizeof(headline),"%s",label);
-  snprintf(footer,sizeof(footer),"%lu/%lu KiB  %02u:%02u",
-           (unsigned long)(accepted/1024),(unsigned long)(total/1024),seconds/60,seconds%60);
-  serviceStrip(54,headline,nullptr,pct<=100?pct:100,color);
-  // Actual accepted byte count and original lease remaining. No claimed
-  // success until Update.end succeeds; reboot verification belongs to OSA.
-  serviceStrip(95,nullptr,footer,101,color,
-               stage==UploadView::Committed?"IMAGE COMMITTED":
-               stage==UploadView::Failed?"CHECK OSA / SERIAL":"DO NOT POWER OFF");
+  char headline[32],footer[40];
+  if (stage==UploadView::Receiving)
+    snprintf(headline,sizeof(headline),"UPLOADING %u%%",pct);
+  else snprintf(headline,sizeof(headline),"%s",stage==UploadView::Verifying?"VERIFYING":
+                    stage==UploadView::Committed?"REBOOTING":"UPLOAD FAILED");
+  if (stage==UploadView::Receiving)
+    snprintf(footer,sizeof(footer),"%lu/%lu KiB  %02u:%02u",
+             (unsigned long)(accepted/1024),(unsigned long)(total/1024),seconds/60,seconds%60);
+  else snprintf(footer,sizeof(footer),"%s",stage==UploadView::Committed?"IMAGE COMMITTED":
+                    stage==UploadView::Failed?"CHECK OSA / SERIAL":"DO NOT POWER OFF");
+  serviceDetail(headline,footer,pct,color);
   serviceStage=st; servicePercent=pct; serviceSeconds=seconds;
   serviceAccepted=accepted; serviceTotal=total; serviceFrameMs=now;
   hardwareBacklight(true);
