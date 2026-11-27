@@ -113,7 +113,7 @@ String hardwareStatus() {
   String status(buf);
   uint16_t syntheticMv=0;
   if (hardwareSyntheticVoltage(syntheticMv)) {
-    status+=",\"voltage_source\":\"synthetic_bench\",\"synthetic_voltage_mv\":";
+    status+=settingsCurrent().profile==mm::Profile::Bench?",\"voltage_source\":\"synthetic_bench\",\"synthetic_voltage_mv\":":",\"voltage_source\":\"synthetic_field_test\",\"synthetic_voltage_mv\":";
     status+=String(unsigned(syntheticMv));
   } else status+=",\"voltage_source\":\"synthetic_unavailable\",\"synthetic_voltage_mv\":null";
   char wake[320];
