@@ -429,6 +429,7 @@ void otaPoll() {
       const auto* running=esp_ota_get_running_partition();
       if (target && running && target->address!=running->address)
         otaLeaseArm(leaseEnd,target->address);
+      hardwareBacklight(false);
       ESP.restart();
     }
     return;
