@@ -1,5 +1,10 @@
 # V1.04 — Fresh runtime framework
 
+## Dual-core runtime direction — 2026-11-27 (technical lead design)
+
+ESP32-S3 dual-core FreeRTOS; retain Arduino core 2.0.17. Prefer existing system/network affinity (typically Core 0) and one application coordinator (typically Core 1); verify actual build configuration and task affinity before pinning. No gratuitous task-per-peripheral split. Single owner of state, power/MOSFET, button classification, lease, sleep; bounded workers only when measured blocking/latency warrants it (GPS UART, sensor acquisition, display, storage/HTTP work as appropriate). Use bounded queues/event notifications, immutable snapshots or synchronized ownership, explicit deadlines and backpressure; one I2C bus owner, one storage/flash mutation owner, no concurrent BLE/Wi-Fi, no changes to protected radio sequence/affinity without approval. No busy polling, spin loops or unbounded waits. Workers block when idle, acknowledge quiescence before sleep; no new wake solely for worker activity. Shared flash operations can stall both cores; never assume affinity provides hard real-time isolation, never sleep mid-transaction. Benchmark both core identities, task stack high-water, heap, loop/input latency, ADC cadence, queue saturation, watchdogs, shutdown latency and whole-input wake energy with/without additional workers; exercise radio loss, stuck button and flash failure. Dual-core work only if beneficial; both application cores stop in deep sleep. No implementation or test claims in this checkpoint.
+
+
 Owner approved a new setup/loop framework first, then integration of working donor code where useful and clean replacement where needed. Do not import the 1262-line donor sketch wholesale. Preserve functional/protocol contracts and protected radio implementation.
 
 ## Current code
