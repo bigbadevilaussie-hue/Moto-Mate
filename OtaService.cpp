@@ -195,6 +195,22 @@ void setSettings() {
   if (receiving || complete || rebootAt || Update.isRunning()) {
     server.send(409,"text/plain","OTA transaction active"); return;
   }
+  if (server.args()==1 && server.hasArg("fake_adc_mv")) {
+    const String value=server.arg("fake_adc_mv");
+    uint32_t mv=0;
+    bool valid=value.length()>0 && value.length()<=5;
+    for(size_t i=0;valid && i<value.length();++i) {
+      const char c=value[i];
+      if(c<'0' || c>'9') valid=false;
+      else mv=mv*10+uint32_t(c-'0');
+    }
+    if(!valid || mv>20000) { server.send(400,"text/plain","fake_adc_mv must be 0..20000"); return; }
+    if(!settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) {
+      server.send(409,"text/plain","healthy BENCH required"); return;
+    }
+    if(!settingsFakeAdcSet(uint16_t(mv))) { server.send(503,"application/json",settingsJson()); return; }
+    server.send(200,"application/json",settingsJson()); return;
+  }
   if (server.args()!=3 || !server.hasArg("profile") ||
       !server.hasArg("bench_sleep") || !server.hasArg("verbose")) {
     server.send(400,"text/plain","expected profile, bench_sleep, verbose"); return;
