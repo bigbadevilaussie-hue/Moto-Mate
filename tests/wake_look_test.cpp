@@ -28,6 +28,18 @@ int main() {
   assert(g.poll(200000,true,true)==Gesture::None);
   assert(g.poll(1700000,true,true)==Gesture::Long);
   assert(g.poll(1750000,false,false)==Gesture::None);
+  // V1.37 NVS-configured physical maintenance admission timing.
+  g.configure(400000,2000000);
+  g.begin(0,true,true);
+  assert(g.poll(1999999,true,true)==Gesture::None);
+  assert(g.poll(2000000,true,true)==Gesture::Long);
+  assert(g.poll(9000000,true,true)==Gesture::None);
+  assert(g.poll(9100000,false,false)==Gesture::None);
+  g.begin(0,false,false);
+  assert(g.poll(30000,true,true)==Gesture::None);
+  assert(g.poll(100000,false,false)==Gesture::None);
+  assert(g.poll(499999,false,false)==Gesture::None);
+  assert(g.poll(500000,false,false)==Gesture::Single);
   WakeLook w;
   w.begin(0,WakeCause::Timer);
   w.step(1000,Gesture::None,false,true); assert(w.activity()==WakeActivity::SleepPending);
