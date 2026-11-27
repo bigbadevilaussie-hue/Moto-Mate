@@ -1,7 +1,7 @@
 """Pure host-side presentation rules; never communicates with the motorcycle."""
 import math
 
-GUI_VERSION = "2.05"
+GUI_VERSION = "2.06"
 ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status", "/moto/maintenance/status")
 COLLECT = "/moto/log/start"
 MAINT = "/moto/maintenance/"
@@ -64,3 +64,29 @@ def live_labels(status):
             "* Protected rail estimate • uncalibrated" if rail is not None else "No fresh qualified ADC sample",
             f"{temp:.1f} °C\nTemperature" if temp is not None else "— °C\nTemperature",
             f"{rh:.0f} %\nHumidity" if rh is not None else "— %\nHumidity")
+
+def ota_console(state):
+    if not state:
+        return "[OSA] Maintenance status unavailable."
+    r=state.get("ota_receipt")
+    lines=["[OSA] "+str(state.get("stage") or state.get("phase","idle"))]
+    remaining=state.get("maintenance_remaining_ms")
+    if state.get("session") is True and type(remaining) is int:
+        lines.append(f"[MAINT] Remaining {remaining/1000:.0f}s (OSA estimate)")
+    if not isinstance(r,dict):
+        lines.append("[OTA] No upload receipt yet.")
+        return "\n".join(lines)
+    lines.append(f"[OTA] {r.get('before_version','—')} -> {r.get('target_version','—')}")
+    lines.append(f"[OTA] Original boot {r.get('before_boot','—')} slot {r.get('before_slot','—')}")
+    lines.append(f"[OTA] Image {r.get('bytes','—')} bytes")
+    lines.append(f"[OTA] MD5 {r.get('md5','—')}")
+    lines.append(f"[OTA] SHA256 {r.get('sha256','—')}")
+    lines.append("[OTA] Upload acceptance "+("CONFIRMED" if r.get("accepted") is True else "NOT CONFIRMED"))
+    if r.get("verified") is True:
+        lines.append(f"[BOOT] MOTO-MATE V{r.get('after_version')} boot={r.get('after_boot')} slot={r.get('after_slot')}")
+        lines.append("[OTA] PASS — new boot, alternate slot and revision verified")
+    else:
+        lines.append("[OTA] Reboot not verified; do not retry blindly")
+    if r.get("error"):
+        lines.append("[OTA] "+str(r["error"]))
+    return "\n".join(lines)
