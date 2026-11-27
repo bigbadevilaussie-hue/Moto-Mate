@@ -2,6 +2,7 @@
 #include "OtaService.h"
 #include "OtaLease.h"
 #include "Hardware.h"
+#include "Display.h"
 #include "Settings.h"
 #include "MotoClock.h"
 #include "ClockPolicy.h"
@@ -46,8 +47,11 @@ bool authorised() {
 }
 
 void abortUpload(const char* reason) {
+  const bool wasActive=receiving || complete || Update.isRunning();
   if (Update.isRunning()) Update.abort();
   receiving = complete = false;
+  if (wasActive && settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
+    displayFirmwareUpload(UploadView::Failed,written,expected,leaseEnd);
   failure = reason;
   Serial.printf("[OTA] FAIL %s\n", reason);
 }
@@ -136,6 +140,8 @@ void upload() {
       }
       if (Update.write(u.buf,u.currentSize)!=u.currentSize) { abortUpload("short flash write"); return; }
       written += u.currentSize;
+      if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
+        displayFirmwareUpload(UploadView::Receiving,written,expected,leaseEnd);
       break;
     case UPLOAD_FILE_END:
       if (receiving && written==expected && u.totalSize==expected) {
@@ -158,7 +164,14 @@ void finishRequest() {
   } else if (!complete || !Update.isRunning()) {
     abortUpload(failure.length()?failure.c_str():"missing or incomplete image");
     server.send(400,"text/plain",failure);
-  } else if (!Update.end(false)) {
+  } else {
+    if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
+      displayFirmwareUpload(UploadView::Verifying,written,expected,leaseEnd);
+    // Recheck the existing guard after rendering, before flash commit.
+    if (!leaseOpen(2000000ULL)) {
+      abortUpload("maintenance deadline");
+      server.send(403,"text/plain","maintenance expired");
+    } else if (!Update.end(false)) {
     abortUpload("image validation or commit failed");
     server.send(500,"text/plain",failure);
   } else {
@@ -166,6 +179,9 @@ void finishRequest() {
     server.send(200,"application/json","{\"accepted\":true,\"reboot_pending\":true}");
     rebootAt = esp_timer_get_time()+500000;
     Serial.println("[OTA] image committed; reboot pending, verify new boot remotely");
+    if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench)
+      displayFirmwareUpload(UploadView::Committed,written,expected,leaseEnd);
+    }
   }
   sawFile = false;
 }
