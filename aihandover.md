@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.45 — repeat sensor diagnostics for wiring repair
+
+Owner requested looping the V1.44 test to diagnose four-wire hookup. BENCH sensor polling now repeats targeted four-address probes and SDA/SCL idle levels every 2s, deferring until SHT conversion finishes, plus current fresh temperature/RH and accel/gyro or explicit failure states. Failed sensor retry interval reduced from 5s to 2s. Existing startup scan and first valid readings retained. No additional diagnostic while paused or final BENCH sleep countdown; existing 30/30 cycle and physical 180s maintenance lease unchanged. Diagnostic output pauses during synchronous OTA processing. No general scan, new wiring, radio changes or FIELD enable. Owner compile/OTA/physical proof pending. V1.44 last running, all four expected addresses NACK.
+
+
 ## V1.44 owner OTA PASS / I2C detection FAIL — 2026-11-27
 
 Owner serial confirms OTA image 1550384 bytes committed, original upload splash mode4 sent, V1.44 software reset and retained original maintenance lease 135816ms, WiFi 1045ms RSSI -31, 8.5dBm and 800ms guard, OTA READY. I2C GPIO6 SDA and GPIO7 SCL both idle HIGH at 100kHz; all targeted addresses 0x44, 0x51, 0x68, 0x69 return result2 NACK. RTC not fitted. MPU setup repeatedly absent; no valid SHT sample. No evidence of stuck-low idle bus, but physical continuity, actual sensor supply and pin mapping unverified. Check shared four-wire connection before further software changes; leave AD0 unchanged. FIELD disabled. Host OTA receipt and visual upload progress not independently supplied.
