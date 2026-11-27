@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.39 — TFT flicker fix (2026-11-27)
+
+Owner reports terrible BENCH display flicker on V1.38. Source confirms full-screen black clear and redraw every one-second tick; this is the identified software cause, physical verification pending. Display.cpp now draws static BENCH heading only on entry and updates changed formatted readings/countdown using a reusable 160x33 RGB565 strip (10560 bytes pixel storage plus overhead). Compose offscreen then push completed row; no periodic whole-screen clear. Same strip buffers sleep countdown text; released after final retained emoji or mode exit. Allocation failure logs and falls back to partial direct redraw, which may locally flicker. No refresh cadence, radio, sleep, settings or hardware/backlight GPIO changes. V1.39 staged on main, owner build/OTA/visual validation required. V1.38 owner compile PASS; exact full BLE/30/30/maintenance/OSA qualification still pending. Existing OTA verification over Wi-Fi can time out after autonomous boot; serial is required. No FIELD enable.
+
+
 ## V1.38 owner build PASS — 2026-11-27
 
 Owner native wake/look regression PASS; Arduino compile PASS: 1544257/1966080 B flash (78%), static RAM 69212/327680 B (21%), remaining 258468 B. Fixed build receipt schema1, version1.38, motomate.ino.bin 1544848 B, MD5 bb0e13bd6da4704989fcae42baf49f7d, SHA256 66e602182b163799195bcdaf67738718d8901faf88df8babe1def5412c57ad05. This is build evidence only, not deployment or runtime BLE qualification. OSA1.45 suite/deployment not yet reported. Initial upload from running V1.36 maintenance via OSA; new V1.38 boot defaults to Wi-Fi-off BENCH so old OTA verifier may report timeout despite successful commit; verify actual serial boot/version and do not blindly retry. Backlight GPIO4 still held LOW in this build; module photograph suggests onboard transistor but electrical qualification and firmware control remain separate. No FIELD activation.
