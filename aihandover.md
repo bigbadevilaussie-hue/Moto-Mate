@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.46 owner OTA and both sensors live PASS — 2026-11-27
+
+Owner serial confirms OTA committed 1551552 bytes, original splash mode4, actual boot V1.46, RTC retained maintenance lease107307ms, WiFi1046ms RSSI-29 8.5dBm/800ms guard. Shared I2C GPIO6/7 idle HIGH, 100kHz, SHT40 0x44 ACK, MPU 0x68 ACK WHO_AM_I0x74, RTC0x51 and alternate0x69 NACK expected. MPU6515-compatible configuration verified, warmup and live accel/gyro PASS. First SHIT40 27.52C 48.92% CRC OK; subsequent repeated valid 27.41–27.52C 48.67–50.31% RH. MPU repeated X0.061–0.068g Y0.014–0.019g Z1.084–1.090g, gyro X1.66–1.80dps, Y and Z near zero. Repeating diagnostics PASS. If stationary, gravity norm ~1.086–1.092g and X gyro ~1.7dps indicate offset/scale calibration needed; no assumption of stationary orientation certified. Four-wire hookup works, no AD0 change. Sleep quiesce readback, physical movement/tilt response, calibration, actual current and OSA host receipt pending. No firmware change. FIELD disabled.
+
+
 ## V1.46 owner build PASS — 2026-11-27
 
 Owner compile receipt: flash 1550965/1966080 (78%), globals 69708/327680 (21%), free 257972, OTA image 1551552 bytes, MD5 eddaff9e924f4bcce55430f5c5904484, SHA256 b05bdbb4d57b6700febebfaf5f2cb370ad053daf4c2abef99b12028f5417feb8. V1.44 actual SHT40 CRC PASS and MPU ACK ID0x74; V1.46 OTA, configuration readback, actual motion measurements and sleep verification pending. FIELD disabled.
