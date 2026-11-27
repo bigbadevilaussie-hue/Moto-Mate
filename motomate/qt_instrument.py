@@ -3,9 +3,9 @@ import json
 from PySide6.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QPoint
 from PySide6.QtGui import QPainter, QColor, QPen, QFont
 from PySide6.QtWidgets import (QMainWindow, QWidget, QFrame, QLabel, QPushButton,
-    QHBoxLayout, QVBoxLayout, QGridLayout, QScrollArea, QSizeGrip, QDialog, QMessageBox)
+    QHBoxLayout, QVBoxLayout, QGridLayout, QScrollArea, QSizeGrip, QDialog, QMessageBox, QPlainTextEdit)
 from .qt_app import Dashboard, OsaClient, card, label
-from .qt_model import GUI_VERSION, link_label, age_label, live_labels
+from .qt_model import GUI_VERSION, link_label, age_label, live_labels, ota_console
 from .qt_maintenance import Maintenance
 
 
@@ -100,9 +100,14 @@ class Instrument(Dashboard):
             self.add_tool(title, make(), 610, 550)
         self.maintenance = Maintenance(self)
         self.add_tool("Human intervention", self.maintenance, 610, 640)
+        page, box = self.page("Serial console", "OSA diagnostic transcript • not raw UART")
+        self.serial_console=QPlainTextEdit()
+        self.serial_console.setReadOnly(True)
+        self.serial_console.setPlainText(ota_console(None))
+        box.addWidget(self.serial_console,1)
+        self.add_tool("Serial console",page,650,480)
         for title, text in (("Settings", "Settings are available in Human intervention after an explicit connection."),
                             ("OTA firmware", "OTA is available in Human intervention after an explicit connection."),
-                            ("Serial console", "Firmware serial-over-Wi-Fi is not implemented. Use the existing USB serial terminal."),
                             ("Reports / Ride finder", "Historical ride processing is not yet connected to qualified Moto-Mate data.")):
             if title in ("Settings", "OTA firmware"):
                 continue
@@ -191,6 +196,9 @@ class Instrument(Dashboard):
 
     def render(self):
         super().render()
+        transcript=ota_console(self.values.get("/moto/maintenance/status"))
+        if self.serial_console.toPlainText()!=transcript:
+            self.serial_console.setPlainText(transcript)
         v, note, temp, rh = live_labels(self.values.get("/moto/status"))
         self.voltage.setText(v)
         self.voltage_note.setText(note)
