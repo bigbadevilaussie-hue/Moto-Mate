@@ -11,7 +11,6 @@ mm::DebouncedInput button(30000); // sole debounce owner
 mm::Gestures gestures;
 mm::Gesture pendingGesture=mm::Gesture::None;
 bool safeOutputs=false, sampled=false, wakePinRtc=false;
-bool backlightOn=false;
 esp_sleep_wakeup_cause_t bootCause=ESP_SLEEP_WAKEUP_UNDEFINED;
 uint32_t adcMv=0;
 mm::TimeUs sampleAt=0;
@@ -31,7 +30,6 @@ void hardwareBegin(mm::TimeUs now) {
   for (int pin : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN}) {
     if (!off(pin)) safeOutputs=false;
   }
-  backlightOn=false;
   // Release global deep-sleep hold only after preparing all output pads.
   // BL is already LOW before the retained panel CS/RESET are released.
   gpio_deep_sleep_hold_dis();
@@ -58,10 +56,8 @@ bool hardwareBacklight(bool on) {
   if (gpio_set_level(pin,on?1:0)!=ESP_OK) {
     Serial.println("[TFT] BL GPIO write failed");
     gpio_set_level(pin,0);
-    backlightOn=false;
-    return false;
+      return false;
   }
-  backlightOn=on;
   return true;
 }
 void hardwareReportBoot() {
@@ -130,7 +126,6 @@ void hardwareCancelBenchSleep() {
     if (gpio_hold_dis(static_cast<gpio_num_t>(p))!=ESP_OK) safeOutputs=false;
   for (int p : {MOSFET_PIN,BUZZER_PIN,TFT_BLK_PIN,RED_LED_PIN})
     if (!off(p)) safeOutputs=false;
-  backlightOn=false;
 }
 
 bool hardwareArmBenchSleep(mm::TimeUs sleepUs, bool buttonWake, bool keepBacklight) {
