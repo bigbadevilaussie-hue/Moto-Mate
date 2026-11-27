@@ -144,7 +144,7 @@ void sleepPoll(mm::TimeUs now) {
     shown=seconds;
     float temperature=NAN, humidity=NAN;
     sensorsBenchEnvironment(now,temperature,humidity);
-    if (benchDisplay) displayBenchLive(seconds,hardwareBenchVoltage(now),temperature,humidity);
+    if (benchDisplay) displayBenchLive(seconds,hardwareBenchDisplayVoltage(now),temperature,humidity);
   }
 }
 }
@@ -186,6 +186,9 @@ void setup() {
   }
   benchDisplay=bench && settingsHealthy();
   storageAutoBegin(benchDisplay && !sleepLogEnabled,deep && cause==ESP_SLEEP_WAKEUP_TIMER);
+  uint16_t fakeMv=0;
+  if (benchDisplay && hardwareSyntheticVoltage(fakeMv))
+    Serial.printf("[ADC] SYNTHETIC BENCH voltage_mv=%u; real ADC separate; no protection authority\n",unsigned(fakeMv));
   // V1.37 also sleeps safely in unqualified recovery, no screen or automatic radio.
   awakeEnd=benchDisplay?mm::TimeUs(cfg.bench_awake_ms)*1000ULL:mm::BENCH_AWAKE_US;
   sleepUs=benchDisplay?mm::TimeUs(cfg.bench_sleep_ms)*1000ULL:mm::BENCH_SLEEP_US;
