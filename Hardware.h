@@ -10,7 +10,7 @@ void hardwareReportBoot();
 bool hardwareBacklight(bool on);
 void hardwarePoll(mm::TimeUs now);
 void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress);
-float hardwareBenchVoltage(mm::TimeUs now); // physical ADC rail estimate only
+float hardwareBenchVoltage(mm::TimeUs now); // selected BENCH source, not physical battery evidence
 // Synthetic BENCH provider, distinct from the real ADC and protection inputs.
 bool hardwareSyntheticVoltage(uint16_t& mv);
 float hardwareBenchDisplayVoltage(mm::TimeUs now);
