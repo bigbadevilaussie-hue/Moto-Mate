@@ -6,7 +6,9 @@
 #include <esp_timer.h>
 #include <initializer_list>
 namespace {
-constexpr uint64_t RETRY=5000000ULL;
+constexpr uint64_t RETRY=2000000ULL;
+constexpr uint64_t DIAG_PERIOD=2000000ULL;
+uint64_t diagNext=0;
 constexpr uint32_t REF_MAGIC=0x4d4d0123;
 RTC_DATA_ATTR uint32_t refMagic=0;
 RTC_DATA_ATTR mm::Vec3 savedRef={};
@@ -139,7 +141,10 @@ String vector(bool valid,mm::Vec3 v) {
 }
 void sensorsBegin(bool deepSleepWake) {
   enabled=i2cBegin();
-  if (enabled) diagnoseBus();
+  if (enabled) {
+    diagnoseBus();
+    diagNext=uint64_t(esp_timer_get_time())+DIAG_PERIOD;
+  }
   if (deepSleepWake && refMagic==REF_MAGIC) reference.restore(savedRef);
   if (!reference.ready()) refMagic=0;
   if (SHT40_ENABLED) shtState=enabled?"pending":"bus_init_failed";
@@ -152,6 +157,18 @@ void sensorsPoll(uint64_t now) {
   // At most one device transaction sequence per iteration where possible.
   shtPoll(now);
   mpuPoll(uint64_t(esp_timer_get_time()));
+  const uint64_t t=esp_timer_get_time();
+  // Never address-probe SHT40 during an outstanding measurement.
+  if (!shtPending && t>=diagNext) {
+    diagNext=t+DIAG_PERIOD;
+    diagnoseBus();
+    if (shtValid && t>=shtAt && t-shtAt<=3000000ULL)
+      Serial.printf("[SHIT40] state=%s temperature=%.2f C humidity=%.2f %% CRC=OK\n",shtState,double(temp),double(rh));
+    else Serial.printf("[SHIT40] state=%s no fresh reading\n",shtState);
+    if (mpuValid && t>=mpuAt && t-mpuAt<=500000ULL)
+      Serial.printf("[MYPOO] state=%s addr=0x%02X accel_g=%.3f,%.3f,%.3f gyro_dps=%.2f,%.2f,%.2f\n",mpuState,unsigned(mpuAddress),double(accel.x),double(accel.y),double(accel.z),double(gyro.x),double(gyro.y),double(gyro.z));
+    else Serial.printf("[MYPOO] state=%s addr=0x%02X no fresh reading\n",mpuState,unsigned(mpuAddress));
+  }
 }
 bool sensorsQuiesce() {
   if (paused) return !mpuAwakePossible;
@@ -168,7 +185,7 @@ bool sensorsQuiesce() {
   return !mpuAwakePossible;
 }
 void sensorsResume() {
-  paused=false; shtNext=mpuNext=0;
+  paused=false; shtNext=mpuNext=diagNext=0;
 }
 void sensorsBenchEnvironment(uint64_t now,float& temperature,float& humidity) {
   const bool fresh=shtValid && now>=shtAt && now-shtAt<=3000000ULL;
