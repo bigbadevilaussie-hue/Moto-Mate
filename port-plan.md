@@ -1,5 +1,10 @@
 # Moto-Mate — dependency-ordered port plan
 
+## V1.44 — BENCH I2C sensor diagnosis (2026-11-27)
+
+Owner reports MPU absent while wiring sensors and requires original four-wire hookup, no AD0 wiring change. Targeted startup diagnostic probes SHT40 0x44, RTC 0x51, MPU 0x68 and 0x69, logs SDA/SCL idle levels, Wire result and WHO_AM_I on responding MPU addresses. Bounded four-address probe, no general scan or bus pin reconfiguration. MPU driver prefers configured 0x68; on clean NACK only, accepts alternate 0x69 only with WHO_AM_I 0x68, locks selected address before writes and uses same address for sampling/configuration/sleep verification. First valid SHT CRC-decoded temperature/RH and first valid MPU accelerometer/gyro values reported in serial per boot; setup results and final quiesce states reported. No changed sensor wiring, radio, maintenance, TFT or sleep policies. V1.44 staged main; owner compile, OTA and physical sensor results pending. V1.43 last running with full maintenance lifecycle PASS. FIELD remains disabled.
+
+
 ## V1.43 — preserve commissioned splash identity (2026-11-27)
 
 Owner explicitly requires original main splash design unchanged. Supersedes V1.42 alternate layout: service screens now call existing drawSplash() for original JPEG header/footer artwork, antialiased white mode heading and original version placement. Splash.cpp, Splash.h, SplashArtwork.h untouched. Countdown and upload progress rendered only in original detail band y81..109, white dynamic text with narrow segmented colored bar, no overlap with title or footer. Maintenance countdown, real accepted bytes and commit stages retained; detail sprite 160x29 (9280 bytes pixel storage) reused while in service screen. No changes to boot intro, BENCH instrumentation, sleep emoji, radio, OTA protocol or maintenance lease. V1.43 staged; owner compile and TFT visual fit validation pending; V1.41 last confirmed running. Do not redesign commissioned splash without explicit owner approval.
