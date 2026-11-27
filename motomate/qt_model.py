@@ -1,7 +1,7 @@
 """Pure host-side presentation rules; never communicates with the motorcycle."""
 import math
 
-GUI_VERSION = "2.03"
+GUI_VERSION = "2.04"
 ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status", "/moto/maintenance/status")
 COLLECT = "/moto/log/start"
 MAINT = "/moto/maintenance/"

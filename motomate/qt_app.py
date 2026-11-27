@@ -289,6 +289,10 @@ class Dashboard(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("Moto-Mate")
+    from .qt_icon import app_icon
+    icon = app_icon()
+    if not icon.isNull():
+        app.setWindowIcon(icon)
     apply_arctic_theme(app)
     from .qt_instrument import Instrument
     window = Instrument()

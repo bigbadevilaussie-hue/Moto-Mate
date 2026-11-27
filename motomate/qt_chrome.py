@@ -31,6 +31,14 @@ class ArcticTitleBar(QWidget):
         row = QHBoxLayout(self)
         row.setContentsMargins(9, 2, 5, 2)
         row.setSpacing(6)
+        from .qt_icon import app_icon
+        icon = app_icon()
+        if not icon.isNull():
+            mark = QLabel(self)
+            mark.setPixmap(icon.pixmap(24, 24))
+            mark.setFixedSize(24, 24)
+            mark.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+            row.addWidget(mark)
         self.heading = QLabel(target.windowTitle())
         self.heading.setObjectName("arcticWindowCaption")
         self.heading.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
