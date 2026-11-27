@@ -8,6 +8,7 @@
 #include "MotoClock.h"
 #include "Rtc8563.h"
 #include "BenchSensors.h"
+#include "BenchBleTelemetry.h"
 #include "Storage.h"
 #include "LogIdentity.h"
 #include "LogSleepPolicy.h"
@@ -30,6 +31,8 @@ constexpr uint32_t BENCH_MAGIC=0x4D4D0119;
 constexpr uint32_t BENCH_LOG_MAGIC=0x4D4D0131;
 bool sleepLogEnabled=false,sleepLogAttempted=false,sleepLogSuccess=false;
 bool entryArmed=false, benchDisplay=false, intro=false;
+bool bleWindow=false;
+uint32_t bootCause=0;
 RTC_DATA_ATTR uint32_t benchMagic=0;
 RTC_DATA_ATTR uint32_t benchCycle=0;
 RTC_DATA_ATTR uint64_t priorAwakeUs=0;
@@ -55,6 +58,12 @@ void beginMaintenance(mm::TimeUs now) {
   sleepLogEnabled=false;
   sensorsResume();
   if (benchDisplay) displayResumePanel();
+  if (!benchBleStop() || !radiosOff()) {
+    Serial.println("[MAINT] refused: BLE shutdown failed; reset without lease");
+    esp_restart();
+    return;
+  }
+  bleWindow=false;
   storageBeginMaintenance();
   Serial.printf("[MAINT] physical entry lease_us=%llu deadline_us=%llu\n",
       (unsigned long long)mm::MAINTENANCE_US,(unsigned long long)maintenanceEnd);
@@ -72,6 +81,7 @@ void endMaintenance() {
 void sleepFault(const char* why) {
   clearCycle();
   sleepLogEnabled=false;
+  benchBleStop(); bleWindow=false;
   hardwareCancelBenchSleep();
   sensorsResume();
   activity=Activity::SleepFault;
@@ -107,7 +117,7 @@ void sleepPoll(mm::TimeUs now) {
     Serial.printf("[SLEEP] cycle=%lu timer_ms=%llu ext0=%s pre_sleep_us=%llu; TFT retained if available\n",
         (unsigned long)benchCycle,(unsigned long long)(sleepUs/1000),
         ext0?"GPIO13 LOW":"off (button held)",(unsigned long long)priorAwakeUs);
-    Serial.flush();
+    // USB CDC may disappear in deep sleep; avoid blocking flush.
     esp_deep_sleep_start();
     return;
   }
@@ -137,6 +147,7 @@ void sleepPoll(mm::TimeUs now) {
 
 void setup() {
   const auto cause=esp_sleep_get_wakeup_cause();
+  bootCause=uint32_t(cause);
   const bool deep=esp_reset_reason()==ESP_RST_DEEPSLEEP &&
       (cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
   mm::log::identityBoot(deep);
@@ -175,12 +186,14 @@ void setup() {
   ++benchCycle;
   intro=benchDisplay && cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON;
   if (benchDisplay) displayBegin(intro);
-  Serial.printf("[BENCH] %s cycle=%lu awake_ms=%llu sleep_ms=%llu prior_awake_us=%llu; Wi-Fi OFF; BLE port pending\n",
+  Serial.printf("[BENCH] %s cycle=%lu awake_ms=%llu sleep_ms=%llu prior_awake_us=%llu; Wi-Fi OFF; bounded BLE\n",
       benchDisplay?"NORMAL":"RECOVERY", (unsigned long)benchCycle,
       (unsigned long long)(awakeEnd/1000),(unsigned long long)(sleepUs/1000),
       (unsigned long long)priorAwakeUs);
   Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
   if (!radiosOff()) sleepFault("unexpected radio state at boot");
+  else if (benchDisplay && !sleepLogEnabled && awakeEnd>nowUs()+7000000ULL)
+    bleWindow=benchBleBegin(otaBootId());
 }
 
 void loop() {
@@ -205,6 +218,13 @@ void loop() {
   }
   switch (activity) {
     case Activity::BenchAwake:
+      if (bleWindow) {
+        const auto t=nowUs();
+        if (t>=awakeEnd || awakeEnd-t<=5000000ULL) {
+          bleWindow=false;
+          if (!benchBleStop()) { sleepFault("BLE shutdown unverified"); break; }
+        } else benchBlePoll(t,benchCycle,bootCause,priorAwakeUs);
+      }
       sleepPoll(nowUs());
       break;
     case Activity::SleepFault:
