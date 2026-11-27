@@ -263,7 +263,7 @@ void loop() {
       if (nowUs()>=retryAt) { wifiBegin(); activity=Activity::Connecting; }
       break;
   }
-  if (maintenanceEnd && benchDisplay)
-    displayPoll(activity==Activity::Maintenance?SplashMode::Maintenance:SplashMode::Initialising);
+  if (maintenanceEnd && benchDisplay && !otaRebootPending() && nowUs()<maintenanceEnd)
+    displayMaintenance(activity==Activity::Maintenance,maintenanceEnd);
   vTaskDelay(1);
 }
