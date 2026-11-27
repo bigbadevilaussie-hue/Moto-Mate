@@ -3,6 +3,7 @@
 #include "Hardware.h"
 #include "WifiManager.h"
 #include "OtaService.h"
+#include "OtaLease.h"
 #include "Settings.h"
 #include "Display.h"
 #include "MotoClock.h"
@@ -146,6 +147,7 @@ void sleepPoll(mm::TimeUs now) {
 }
 
 void setup() {
+  const auto resumedDeadline=otaLeaseConsume();
   const auto cause=esp_sleep_get_wakeup_cause();
   bootCause=uint32_t(cause);
   const bool deep=esp_reset_reason()==ESP_RST_DEEPSLEEP &&
@@ -186,12 +188,21 @@ void setup() {
   ++benchCycle;
   intro=benchDisplay && cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON;
   if (benchDisplay) displayBegin(intro);
-  Serial.printf("[BENCH] %s cycle=%lu awake_ms=%llu sleep_ms=%llu prior_awake_us=%llu; Wi-Fi OFF; bounded BLE\n",
+  Serial.printf("[BENCH] %s cycle=%lu awake_ms=%llu sleep_ms=%llu prior_awake_us=%llu; Wi-Fi OFF at boot; bounded BLE unless OTA continuation\n",
       benchDisplay?"NORMAL":"RECOVERY", (unsigned long)benchCycle,
       (unsigned long long)(awakeEnd/1000),(unsigned long long)(sleepUs/1000),
       (unsigned long long)priorAwakeUs);
   Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
   if (!radiosOff()) sleepFault("unexpected radio state at boot");
+  else if (benchDisplay && resumedDeadline>nowUs()) {
+    maintenanceEnd=resumedDeadline;
+    activity=Activity::Connecting;
+    clearCycle(); sleepLogEnabled=false;
+    storageBeginMaintenance();
+    Serial.printf("[MAINT] OTA continuation remaining_ms=%llu; original lease only\n",(unsigned long long)((maintenanceEnd>nowUs()?maintenanceEnd-nowUs():0)/1000));
+    if (nowUs()<maintenanceEnd) wifiBegin();
+    else endMaintenance();
+  }
   else if (benchDisplay && !sleepLogEnabled && awakeEnd>nowUs()+7000000ULL)
     bleWindow=benchBleBegin(otaBootId());
 }
