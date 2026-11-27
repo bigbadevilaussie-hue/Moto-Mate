@@ -1,5 +1,10 @@
 # Moto-Mate GUI V1.00 — source import / commissioning
 
+## Maintenance/display clarification — 2026-11-27
+
+Owner: normal BENCH cycles show live instrumentation when awake and sleeping emoji during sleep. BENCH does not imply maintenance. Only physical wake-button long press starts maintenance and enables its Wi-Fi services. Normal BENCH reset/timer wake must not automatically open maintenance; existing commissioning behaviour remains historical until replaced. OSA discovers already-active authorised sessions without commanding entry or adding device wakes; GUI consumes OSA cached lease status, enables maintenance-only controls while a fresh authenticated device lease is valid, greys/disables them on inactive, stale, disconnected or expired status. No activation control. Device rechecks lease for every privileged operation; absolute 180 s from physical acceptance, never renewed. History/graphs/analysis remain available offline. FIELD display stays off under latest owner direction; explicit physical battery-test/Rider Ready display exceptions are not separately confirmed. Panic/urgent Wi-Fi transport remains separate from maintenance authority; cannot grant OTA or settings. Current TFT is ST7735, not OLED (owner colloquial description). Requirements, not implemented.
+
+
 ## Current owner direction — 2026-11-27
 
 This section supersedes conflicting historical design text below; it describes requirements, not implemented or tested behaviour.
