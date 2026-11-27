@@ -4,6 +4,7 @@
 #include "Config.h"
 #include <esp_attr.h>
 #include <esp_timer.h>
+#include <initializer_list>
 namespace {
 constexpr uint64_t RETRY=5000000ULL;
 constexpr uint32_t REF_MAGIC=0x4d4d0123;
@@ -12,20 +13,52 @@ RTC_DATA_ATTR mm::Vec3 savedRef={};
 bool enabled=false,paused=false,shtPending=false,shtValid=false,mpuReady=false,mpuValid=false,mpuAwakePossible=false;
 const char* shtState="disabled";
 const char* mpuState="disabled";
+uint8_t mpuAddress=MPU6050_ADDRESS;
+bool mpuAddressLocked=false, shtReported=false, mpuReported=false;
 uint64_t shtNext=0,shtReadAt=0,shtAt=0,mpuNext=0,mpuAt=0;
 float temp=0,rh=0;
 mm::Vec3 accel={},gyro={};
 mm::MotionReference reference;
+void diagnoseBus() {
+  // Address-only probes: bounded known devices, no broad scan on a stuck bus.
+  Serial.printf("[I2C] SDA=GPIO%d level=%d SCL=GPIO%d level=%d clock=%lu Hz\n",
+    I2C_SDA_PIN,digitalRead(I2C_SDA_PIN),I2C_SCL_PIN,digitalRead(I2C_SCL_PIN),(unsigned long)I2C_BUS_HZ);
+  for (uint8_t address : {uint8_t(SHT40_ADDRESS),uint8_t(RTC_PCF8563_ADDRESS),uint8_t(0x68),uint8_t(0x69)}) {
+    const uint8_t result=i2cProbe(address);
+    Serial.printf("[I2C] addr=0x%02X result=%u %s",
+      unsigned(address),unsigned(result),result==0?"ACK":result==2?"NACK":"BUS ERROR");
+    if (result==0 && (address==0x68 || address==0x69)) {
+      uint8_t who=0;
+      if (i2cReadRegs(address,0x75,&who,1)) Serial.printf(" WHO_AM_I=0x%02X",unsigned(who));
+      else Serial.print(" WHO_AM_I read failed");
+    }
+    Serial.println();
+  }
+}
 bool regWrite(uint8_t reg,uint8_t val) {
   const uint8_t data[]={reg,val};
-  return i2cWrite(MPU6050_ADDRESS,data,2);
+  return i2cWrite(mpuAddress,data,2);
 }
 bool mpuSetup() {
-  const uint8_t probe=i2cProbe(MPU6050_ADDRESS);
+  uint8_t probe=i2cProbe(mpuAddress);
+  // Only select the alternate on a clean NACK before any configuration writes.
+  // Once selected, never switch away from a possibly awake MPU.
+  if (!mpuAddressLocked && probe==2 && mpuAddress==MPU6050_ADDRESS) {
+    const uint8_t alternate=MPU6050_ADDRESS==0x68?0x69:0x68;
+    if (i2cProbe(alternate)==0) {
+      uint8_t id=0;
+      if (i2cReadRegs(alternate,0x75,&id,1) && id==0x68) {
+        mpuAddress=alternate;
+        probe=0;
+        Serial.printf("[MYPOO] alternate address 0x%02X verified; no AD0 wiring change\n",unsigned(mpuAddress));
+      }
+    }
+  }
   if (probe) { mpuState=probe==2?"absent":"probe_error"; return false; }
   uint8_t who=0;
-  if (!i2cReadRegs(MPU6050_ADDRESS,0x75,&who,1)) { mpuState="read_error"; return false; }
+  if (!i2cReadRegs(mpuAddress,0x75,&who,1)) { mpuState="read_error"; return false; }
   if (who!=0x68) { mpuState="wrong_id"; return false; }
+  mpuAddressLocked=true;
   mpuAwakePossible=true;
   // +/-2g, +/-250 degrees/s, filtered bandwidth, 50 Hz output.
   if (!regWrite(0x6b,0x01) || !regWrite(0x6c,0x00)
@@ -34,8 +67,8 @@ bool mpuSetup() {
     mpuState="config_error"; return false;
   }
   uint8_t cfg[4]={},power[2]={};
-  if (!i2cReadRegs(MPU6050_ADDRESS,0x19,cfg,4) ||
-      !i2cReadRegs(MPU6050_ADDRESS,0x6b,power,2) ||
+  if (!i2cReadRegs(mpuAddress,0x19,cfg,4) ||
+      !i2cReadRegs(mpuAddress,0x6b,power,2) ||
       cfg[0]!=19 || cfg[1]!=3 || cfg[2]!=0 || cfg[3]!=0 || power[0]!=1 || power[1]!=0) {
     mpuState="config_readback_failed"; return false;
   }
@@ -51,7 +84,13 @@ void shtPoll(uint64_t now) {
     uint8_t b[6]={};
     shtValid=i2cRead(SHT40_ADDRESS,b,6) && mm::shtDecode(b,temp,rh);
     shtState=shtValid?"valid":"read_or_crc_error";
-    if (shtValid) shtAt=esp_timer_get_time();
+    if (shtValid) {
+      shtAt=esp_timer_get_time();
+      if (!shtReported) {
+        Serial.printf("[SHIT40] PASS temperature=%.2f C humidity=%.2f %% CRC=OK\n",double(temp),double(rh));
+        shtReported=true;
+      }
+    }
     shtNext=now+(shtValid?2000000ULL:RETRY);
     return;
   }
@@ -72,17 +111,22 @@ void mpuPoll(uint64_t now) {
   if (now<mpuNext) return;
   if (!mpuReady) {
     mpuReady=mpuSetup(); mpuValid=false; reference.gap();
+    Serial.printf("[MYPOO] addr=0x%02X setup=%s\n",unsigned(mpuAddress),mpuState);
     mpuNext=uint64_t(esp_timer_get_time())+(mpuReady?100000ULL:RETRY);
     return;
   }
   uint8_t b[14]={};
-  if (!i2cReadRegs(MPU6050_ADDRESS,0x3b,b,14)) {
+  if (!i2cReadRegs(mpuAddress,0x3b,b,14)) {
     mpuValid=mpuReady=false; mpuState="read_error"; reference.gap(); mpuNext=now+RETRY; return;
   }
   accel={raw(b)/16384.0f,raw(b+2)/16384.0f,raw(b+4)/16384.0f};
   gyro={raw(b+8)/131.0f,raw(b+10)/131.0f,raw(b+12)/131.0f};
   mpuValid=true; mpuAt=esp_timer_get_time(); mpuState="valid";
   reference.update(accel,gyro);
+  if (!mpuReported) {
+    Serial.printf("[MYPOO] PASS addr=0x%02X accel_g=%.3f,%.3f,%.3f gyro_dps=%.2f,%.2f,%.2f\n",unsigned(mpuAddress),double(accel.x),double(accel.y),double(accel.z),double(gyro.x),double(gyro.y),double(gyro.z));
+    mpuReported=true;
+  }
   mpuNext=now+100000ULL;
 #endif
 }
@@ -95,6 +139,7 @@ String vector(bool valid,mm::Vec3 v) {
 }
 void sensorsBegin(bool deepSleepWake) {
   enabled=i2cBegin();
+  if (enabled) diagnoseBus();
   if (deepSleepWake && refMagic==REF_MAGIC) reference.restore(savedRef);
   if (!reference.ready()) refMagic=0;
   if (SHT40_ENABLED) shtState=enabled?"pending":"bus_init_failed";
@@ -114,12 +159,12 @@ bool sensorsQuiesce() {
   if (reference.ready()) { savedRef=reference.reference(); refMagic=REF_MAGIC; }
   if (mpuAwakePossible) {
     uint8_t p=0;
-    if (regWrite(0x6b,0x40) && i2cReadRegs(MPU6050_ADDRESS,0x6b,&p,1) && (p&0x40)) {
+    if (regWrite(0x6b,0x40) && i2cReadRegs(mpuAddress,0x6b,&p,1) && (p&0x40)) {
       mpuAwakePossible=false; mpuState="sleep_verified";
     } else mpuState="sleep_unverified";
   }
   mpuReady=false;
-  Serial.printf("[SENSORS] quiesced MPU=%s\n",mpuState);
+  Serial.printf("[SENSORS] quiesced MPU=%s SHT40=%s\n",mpuState,shtState);
   return !mpuAwakePossible;
 }
 void sensorsResume() {
@@ -136,6 +181,7 @@ String sensorsJson() {
   String s=String("{\"sht40\":{\"enabled\":")+flag(SHT40_ENABLED)+",\"state\":\""+shtState+"\",\"valid\":"+flag(sv);
   s+=",\"temperature_c\":"+number(sv,temp)+",\"humidity_pct\":"+number(sv,rh)+"}";
   s+=String(",\"mpu6050\":{\"enabled\":")+flag(MPU6050_ENABLED)+",\"state\":\""+mpuState+"\",\"valid\":"+flag(mv);
+  s+=",\"address\":"+String(unsigned(mpuAddress));
   s+=",\"accel_g\":"+vector(mv,accel)+",\"gyro_dps\":"+vector(mv,gyro);
   s+=String(",\"reference_ready\":")+flag(reference.ready())+",\"gravity_reference_g\":"+vector(reference.ready(),reference.reference());
   s+=",\"gravity_delta_g\":"+number(mv&&reference.ready(),reference.delta(accel))+"}}";
