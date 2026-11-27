@@ -1,5 +1,6 @@
 #include "Hardware.h"
 #include "Config.h"
+#include "Settings.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
@@ -85,6 +86,15 @@ void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress) { gesture
 float hardwareBenchVoltage(mm::TimeUs now) {
   return sampled && now>=sampleAt && now-sampleAt<=1000000ULL ? adcMv*0.0057f : NAN;
 }
+bool hardwareSyntheticVoltage(uint16_t& mv) {
+  if (!settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) return false;
+  mv=12830; // V1.48 fixed synthetic BENCH fixture, never physical battery evidence.
+  return true;
+}
+float hardwareBenchDisplayVoltage(mm::TimeUs now) {
+  uint16_t mv=0;
+  return hardwareSyntheticVoltage(mv)?float(mv)/1000.0f:hardwareBenchVoltage(now);
+}
 mm::Gesture hardwareTakeGesture() {
   const auto result=pendingGesture;
   pendingGesture=mm::Gesture::None;
@@ -102,6 +112,11 @@ String hardwareStatus() {
       (unsigned long)((adcMv*57UL+5)/10),(unsigned long long)((esp_timer_get_time()-sampleAt)/1000));
   }
   String status(buf);
+  uint16_t syntheticMv=0;
+  if (hardwareSyntheticVoltage(syntheticMv)) {
+    status+=",\"voltage_source\":\"synthetic_bench\",\"synthetic_voltage_mv\":";
+    status+=String(unsigned(syntheticMv));
+  } else status+=",\"voltage_source\":\"physical_uncalibrated\",\"synthetic_voltage_mv\":null";
   char wake[320];
   const auto now=mm::TimeUs(esp_timer_get_time());
   snprintf(wake,sizeof(wake),
