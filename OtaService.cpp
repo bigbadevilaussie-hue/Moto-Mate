@@ -205,8 +205,8 @@ void setSettings() {
       else mv=mv*10+uint32_t(c-'0');
     }
     if(!valid || mv>20000) { server.send(400,"text/plain","fake_adc_mv must be 0..20000"); return; }
-    if(!settingsHealthy() || settingsCurrent().profile!=mm::Profile::Bench) {
-      server.send(409,"text/plain","healthy BENCH required"); return;
+    if(!settingsHealthy() || !mm::ADC_SIMULATION_BUILD || !leaseOpen(2000000ULL)) {
+      server.send(409,"text/plain","healthy simulator and active maintenance lease required"); return;
     }
     if(!settingsFakeAdcSet(uint16_t(mv))) { server.send(503,"application/json",settingsJson()); return; }
     server.send(200,"application/json",settingsJson()); return;
