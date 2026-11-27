@@ -10,7 +10,10 @@ void hardwareReportBoot();
 bool hardwareBacklight(bool on);
 void hardwarePoll(mm::TimeUs now);
 void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress);
-float hardwareBenchVoltage(mm::TimeUs now);
+float hardwareBenchVoltage(mm::TimeUs now); // physical ADC rail estimate only
+// Synthetic BENCH provider, distinct from the real ADC and protection inputs.
+bool hardwareSyntheticVoltage(uint16_t& mv);
+float hardwareBenchDisplayVoltage(mm::TimeUs now);
 mm::Gesture hardwareTakeGesture();
 bool hardwareGesturePending();
 String hardwareStatus();
