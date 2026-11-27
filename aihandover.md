@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.43 owner OTA continuation PASS — 2026-11-27
+
+Owner serial confirms V1.41 autonomous cycles21–23, retained prior awake30006286–30006288 us, BLE startup237–238ms, shutdown PASS on observed completed cycles, BENCH BL=ON command (physical BLK wiring not confirmed). Cycle23 physical long press accepted at3768493us, original 180000000us lease deadline183768604, BLE shutdown PASS, Wi-Fi1048ms RSSI-42dBm. OTA accepted1549424 B, image committed, software reset to actual V1.43, schema2 BENCH loaded, TFT init OK, storage healthy. One-use RTC continuation retained across actual V1.41->V1.43 update: remaining_ms=148286 original lease only; BLE not started, protected800ms guard, original artwork renderer SENT mode1, Wi-Fi1131ms RSSI-39dBm, maintenance recovery complete. Automatic lease continuation runtime PASS for this image pair; no fresh lease. Serial excerpt ends before OTA READY, OSA verification and autonomous expiry not yet evidenced. Visual countdown fit and next upload splash still require owner validation. No hardware BLK qualification or firmware change; FIELD disabled.
+
+
 ## V1.43 owner build PASS — 2026-11-27
 
 Owner compile PASS at main 2f38e51: flash1548833/1966080, RAM69692/327680, remaining257988 B. Build schema1 version1.43 image motomate.ino.bin 1549424 B MD5 68cdfbe13a3fbed23539ba4f8b817191 SHA256 f7d92396285169705857bb5b7d2ba1f67cf8732b8b8f2ddcb324dfe254551030. V1.41 last confirmed running; V1.41->1.43 OTA is first actual retained maintenance lease test. New branded maintenance/OTA detail fit still requires visual verification; upload splash will first run during an OTA initiated by V1.43, not while installing it from V1.41. BLK not wired at last report. OSA1.46 regression and deployment not confirmed. No firmware change in evidence checkpoint; FIELD disabled.
