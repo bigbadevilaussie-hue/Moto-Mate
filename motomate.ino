@@ -61,6 +61,7 @@ void beginMaintenance(mm::TimeUs now) {
   if (benchDisplay) displayResumePanel();
   if (!benchBleStop() || !radiosOff()) {
     Serial.println("[MAINT] refused: BLE shutdown failed; reset without lease");
+    hardwareBacklight(false);
     esp_restart();
     return;
   }
@@ -76,6 +77,7 @@ void endMaintenance() {
   if (activity==Activity::Maintenance) otaStop();
   clearCycle();
   Serial.println("[MAINT] EXPIRED; reset to autonomous cycle; no lease renewal");
+  hardwareBacklight(false);
   Serial.flush();
   esp_restart();
 }
@@ -97,27 +99,28 @@ void sleepPoll(mm::TimeUs now) {
   }
   if (now>=awakeEnd) {
     if (!sensorsQuiesce()) { sleepFault("MPU sleep unverified"); return; }
-    if (benchDisplay && !displaySleepCountdown(0))
-      Serial.println("[TFT] sleep emoji unavailable; sleep continues");
+    const bool keepBacklight=benchDisplay && displaySleepCountdown(0);
+    if (benchDisplay && !keepBacklight)
+      Serial.println("[TFT] sleep emoji unavailable; sleep continues dark");
     if (!radiosOff()) { sleepFault("radio not off"); return; }
     // A stuck/late-held switch must never cause immediate repeated EXT0 wakes.
     bool ext0=hardwareButtonReleased(nowUs());
-    if (!hardwareArmBenchSleep(sleepUs,ext0)) {
+    if (!hardwareArmBenchSleep(sleepUs,ext0,keepBacklight)) {
       if (!ext0 || hardwareButtonReleased(nowUs())) { sleepFault("arm failed"); return; }
       hardwareCancelBenchSleep();
       ext0=false;
-      if (!hardwareArmBenchSleep(sleepUs,false)) { sleepFault("timer arm failed"); return; }
+      if (!hardwareArmBenchSleep(sleepUs,false,keepBacklight)) { sleepFault("timer arm failed"); return; }
     }
     if (ext0 && !hardwareButtonReleased(nowUs())) {
       hardwareCancelBenchSleep();
       ext0=false;
-      if (!hardwareArmBenchSleep(sleepUs,false)) { sleepFault("timer rearm failed"); return; }
+      if (!hardwareArmBenchSleep(sleepUs,false,keepBacklight)) { sleepFault("timer rearm failed"); return; }
     }
     benchMagic=mm::log::sleepLogContinue(sleepLogEnabled,sleepLogSuccess,benchCycle)?BENCH_LOG_MAGIC:BENCH_MAGIC;
     priorAwakeUs=nowUs();
-    Serial.printf("[SLEEP] cycle=%lu timer_ms=%llu ext0=%s pre_sleep_us=%llu; TFT retained if available\n",
+    Serial.printf("[SLEEP] cycle=%lu timer_ms=%llu ext0=%s pre_sleep_us=%llu; BENCH BL=%s\n",
         (unsigned long)benchCycle,(unsigned long long)(sleepUs/1000),
-        ext0?"GPIO13 LOW":"off (button held)",(unsigned long long)priorAwakeUs);
+        ext0?"GPIO13 LOW":"off (button held)",(unsigned long long)priorAwakeUs,keepBacklight?"ON":"OFF");
     // USB CDC may disappear in deep sleep; avoid blocking flush.
     esp_deep_sleep_start();
     return;
