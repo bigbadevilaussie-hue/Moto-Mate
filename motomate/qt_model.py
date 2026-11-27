@@ -57,9 +57,9 @@ def live_labels(status):
         if type(value) in (float, int) and math.isfinite(value) and low <= value <= high:
             return value
         return None
-    simulated = isinstance(data, dict) and (data.get("voltage_source") == "synthetic_bench" or data.get("firmware_version") == "1.48")
+    simulated = isinstance(data, dict) and (data.get("voltage_source") == "synthetic_bench" or data.get("firmware_version") in ("1.48", "1.49"))
     rail = number("synthetic_voltage_mv", 0, 20000) if simulated else number("protected_rail_estimate_mv", 0, 65535)
-    # Compatibility with older OSA: V1.48 always emits the simulated source in BLE.
+    # Compatibility with older OSA: V1.48/1.49 always emits the simulated source in BLE.
     if simulated and rail is None:
         rail = number("protected_rail_estimate_mv", 0, 20000)
     temp = number("temperature_c", -40, 125)
