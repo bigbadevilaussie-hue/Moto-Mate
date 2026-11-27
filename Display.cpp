@@ -211,3 +211,37 @@ void displayResumePanel() {
   tft.wakeup();
   drawn=false;
 }
+
+void displayBenchLive(unsigned seconds,float voltage,float temperature,float humidity) {
+  if (!ready) return;
+  stopIntro();
+  static bool live=false;
+  const uint16_t black=0x0000, white=0xffff, cyan=0x07ff, yellow=0xffe0;
+  if (!live || drawn) { tft.fillScreen(black); live=true; drawn=false; }
+  tft.fillRect(0,0,160,128,black);
+  tft.setTextDatum(lgfx::textdatum_t::top_left);
+  tft.setTextSize(1);
+  tft.setFont(&lgfx::fonts::FreeSansBold9pt7b);
+  tft.setTextColor(cyan);
+  tft.drawString("BENCH MODE",8,4);
+  tft.drawFastHLine(8,25,144,cyan);
+  char v[24],t[24],h[24],footer[32];
+  if (isfinite(voltage)) snprintf(v,sizeof(v),"%.2f V*",double(voltage));
+  else snprintf(v,sizeof(v),"-- V");
+  if (isfinite(temperature)) snprintf(t,sizeof(t),"%.1f C",double(temperature));
+  else snprintf(t,sizeof(t),"-- C");
+  if (isfinite(humidity)) snprintf(h,sizeof(h),"%.0f%% RH",double(humidity));
+  else snprintf(h,sizeof(h),"-- RH");
+  tft.setFont(&lgfx::fonts::FreeSansBold12pt7b);
+  tft.setTextColor(white);
+  tft.drawString(v,8,31);
+  tft.setFont(&lgfx::fonts::FreeSansBold9pt7b);
+  tft.drawString(t,8,64);
+  tft.drawString(h,86,64);
+  tft.setFont(&lgfx::fonts::DejaVu9);
+  tft.setTextColor(yellow);
+  tft.drawString("* rail estimate / uncal",8,86);
+  snprintf(footer,sizeof(footer),"SLEEP IN %us   V%s",seconds,MOTO_MATE_VERSION);
+  tft.setTextColor(cyan);
+  tft.drawString(footer,8,108);
+}
