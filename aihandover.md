@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.44 — BENCH I2C sensor diagnosis (2026-11-27)
+
+Owner reports MPU absent while wiring sensors and requires original four-wire hookup, no AD0 wiring change. Targeted startup diagnostic probes SHT40 0x44, RTC 0x51, MPU 0x68 and 0x69, logs SDA/SCL idle levels, Wire result and WHO_AM_I on responding MPU addresses. Bounded four-address probe, no general scan or bus pin reconfiguration. MPU driver prefers configured 0x68; on clean NACK only, accepts alternate 0x69 only with WHO_AM_I 0x68, locks selected address before writes and uses same address for sampling/configuration/sleep verification. First valid SHT CRC-decoded temperature/RH and first valid MPU accelerometer/gyro values reported in serial per boot; setup results and final quiesce states reported. No changed sensor wiring, radio, maintenance, TFT or sleep policies. V1.44 staged main; owner compile, OTA and physical sensor results pending. V1.43 last running with full maintenance lifecycle PASS. FIELD remains disabled.
+
+
 ## V1.43 owner maintenance expiry PASS — 2026-11-27
 
 Owner serial confirms resumed OTA maintenance reached OTA READY then [MAINT] EXPIRED; reset to autonomous cycle; no lease renewal. Actual V1.43 software reboot loaded BENCH and advertised BLE identity cf13578e (252ms), shutdown PASS and deep sleep timer30000ms pre-sleep30005869us; subsequent cycle2 confirmed. Further power-on-like sequences (intro enabled, cycle1) observed; cause lines truncated, may correspond to owner wiring/power cycles, not diagnosed as spontaneous resets. Subsequent autonomous cycles continue, awake30005918–30006131us, BLE237–254ms. Owner connected GPIO4 BLK and reports white flash replaced by black interval on wake (expected blanking during panel initialization); electrical current not measured. MPU still explicitly absent in completed quiesce lines; SHT40 address banner alone is not proof of detection. Owner wiring both sensors after lunch. Single-tap maintenance exit agreed in conversation but not implemented. OSA verification, upload splash on next OTA, sensor readings and current qualification remain pending. No firmware change, FIELD disabled.
