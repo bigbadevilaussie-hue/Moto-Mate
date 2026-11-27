@@ -314,7 +314,7 @@ void displayBenchLive(unsigned seconds,float voltage,float temperature,float hum
     target.setFont(&lgfx::fonts::DejaVu9);
     target.setTextColor(yellow);
     uint16_t syntheticMv=0;
-    target.drawString(hardwareSyntheticVoltage(syntheticMv)?"* FAKE ADC / BENCH":"* rail estimate / uncal",8,buffered?0:95);
+    target.drawString(hardwareSyntheticVoltage(syntheticMv)?"* FAKE ADC / BENCH":"* ADC unavailable",8,buffered?0:95);
     target.setTextColor(cyan);
     target.drawString(footer,8,buffered?16:111);
     endRow(95);
