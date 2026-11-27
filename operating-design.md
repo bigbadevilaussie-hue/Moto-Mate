@@ -1,5 +1,11 @@
 # Moto-Mate — agreed operating design and development direction
 
+## Owner-approved GPIO13 gestures — 2026-11-27
+
+**LOCKED:** single short press = Rider Ready; double tap = Battery Test, displayed for 10 seconds; long press = enter Maintenance mode. This supersedes the earlier proposed/open gesture mapping. A short press is not merely display wake. No alternative gesture assignment without owner approval.
+
+Physical input and remote BLE maintenance requests converge on the same maintenance coordinator. Remote entry must work without touching/resetting the installed ESP32: OSA queues an explicit request until the next ordinary scheduled BLE wake, ESP acknowledges and safely transitions BLE off then Wi-Fi on. No routine Wi-Fi fallback or extra scheduled wake. Explicit logout and bounded inactivity recovery return to autonomous operation. Exact long-press threshold, double-tap window, Rider Ready duration, battery-test measurement/load semantics, maintenance timeout and physical exit gesture remain to be decided/qualified; do not infer that another long press exits. The 10 seconds applies to the battery test, not a new general awake duration. Keep debounce and gestures nonblocking, mutually exclusive, capture wake press, prevent first tap from firing Rider Ready before double-tap disambiguation, never interrupt active flash writes. Existing BENCH sleep-test cancellation remains separate commissioning behaviour. No firmware change in this docs checkpoint.
+
 ## Owner clarification — 2026-11-27: directories and architectural authority
 
 **AGREED:** Technical lead decides directory locations, ownership and transport architecture. Do not assume Bike-Mate's decisions are correct merely because they exist. Preserve functional requirements, not accidental architecture. GUI dumb terminal for live operations, OSA transaction owner, ESP32 evidence producer and autonomous power controller.
@@ -127,7 +133,7 @@ Bench cadence, override limits, field deployment default and precise exceptions 
 - Clean logout/Exit Maintenance ends session, cancels or safely finishes work, clears overrides/requests, shuts down Wi-Fi, restores appropriate normal radio/activity and sleep policy. No needless reboot just to exit. Abandoned session has bounded inactivity and absolute time limits; routine GUI polling must not keep it alive forever. Avoid premature timeout while genuine user work is in progress. Handle ride start and PANIC safely.
 - Existing endpoint names and UI layout preserved where practical. No approved new console layout, extra protocol or unconditional session auto-entry after every wake. Earlier proposal to remove all maintenance activation and do every task separately is superseded by the owner's session workflow.
 
-**OPEN:** exact maintenance gesture (long press proposed, not approved), session durations, inactivity definition, cancellation/expiry contract, legacy URL OTA and fallback alert policy. Double-click battery check was expressly requested; single-click rider-ready is proposed to preserve the existing intent. Gesture debounce/hold/window timings need real hardware tests.
+**UPDATED:** Owner has locked short press Rider Ready, double tap Battery Test (10 s), long press Maintenance. See current gesture contract above. Session durations, inactivity definition, cancellation/expiry contract and fallback alert policy remain open. Gesture debounce/hold/window timings need real hardware tests.
 
 ## 8. Data collection, delivery and clock
 
