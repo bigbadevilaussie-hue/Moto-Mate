@@ -22,48 +22,19 @@
 #include <freertos/task.h>
 
 namespace {
-enum class Activity { Connecting, Maintenance, Retry, BenchCountdown };
-Activity activity=Activity::Connecting;
-mm::TimeUs retryAt=0;
-mm::TimeUs countdownEnd=0;
+enum class Activity { BenchAwake, Connecting, Maintenance, Retry, SleepFault };
+Activity activity=Activity::BenchAwake;
+mm::TimeUs retryAt=0, awakeEnd=0, sleepUs=mm::BENCH_SLEEP_US, maintenanceEnd=0;
 unsigned shown=999;
 constexpr uint32_t BENCH_MAGIC=0x4D4D0119;
 constexpr uint32_t BENCH_LOG_MAGIC=0x4D4D0131;
 bool sleepLogEnabled=false,sleepLogAttempted=false,sleepLogSuccess=false;
+bool entryArmed=false, benchDisplay=false, intro=false;
 RTC_DATA_ATTR uint32_t benchMagic=0;
 RTC_DATA_ATTR uint32_t benchCycle=0;
 RTC_DATA_ATTR uint64_t priorAwakeUs=0;
 mm::Periodic diagnosticSchedule(5000000ULL);
 mm::TimeUs nowUs() { return mm::TimeUs(esp_timer_get_time()); }
-
-// BENCH observation only. Never controls the physical radio, display or sleep.
-mm::WakeLook wakeLook;
-bool observeWakeLook=false;
-const char* wakeActivityName(mm::WakeActivity state) {
-  switch(state) {
-    case mm::WakeActivity::Look: return "LOOK";
-    case mm::WakeActivity::RiderReady: return "RIDER_READY";
-    case mm::WakeActivity::BatteryTest: return "BATTERY_TEST";
-    case mm::WakeActivity::Maintenance: return "MAINTENANCE";
-    case mm::WakeActivity::Riding: return "RIDING";
-    case mm::WakeActivity::SleepPending: return "SLEEP_PENDING";
-  }
-  return "UNKNOWN";
-}
-void wakeLookObserve(mm::TimeUs now) {
-  const auto gesture=hardwareTakeGesture();
-  if (!observeWakeLook) return;
-  // Existing BENCH OTA remains awake: rearm shadow after simulated sleep
-  // for a new physical gesture, NOT a new real wake or maintenance lease.
-  if (wakeLook.activity()==mm::WakeActivity::SleepPending && gesture!=mm::Gesture::None)
-    wakeLook.begin(now,mm::WakeCause::Button);
-  const auto previous=wakeLook.activity();
-  wakeLook.step(now,gesture,false,false,hardwareGesturePending());
-  if (gesture!=mm::Gesture::None || wakeLook.activity()!=previous)
-    Serial.printf("[WAKE LOOK] SHADOW gesture=%u state=%s deadline_us=%llu at_us=%llu; no actuation\\n",
-        unsigned(gesture),wakeActivityName(wakeLook.activity()),
-        (unsigned long long)wakeLook.deadline(),(unsigned long long)now);
-}
 
 bool radiosOff() {
   wifi_mode_t mode=WIFI_MODE_NULL;
@@ -72,148 +43,182 @@ bool radiosOff() {
     && esp_bt_controller_get_status()==ESP_BT_CONTROLLER_STATUS_IDLE
     && esp_bluedroid_get_status()==ESP_BLUEDROID_STATUS_UNINITIALIZED;
 }
-void abortCountdown(const char* why) {
-  benchMagic=0;
-  benchCycle=0;
-  priorAwakeUs=0;
+void clearCycle() {
+  benchMagic=0; benchCycle=0; priorAwakeUs=0;
   storageSleepForget();
-  Serial.printf("[SLEEP] CANCEL %s; maintenance recovery\n",why);
-  hardwareCancelBenchSleep();
-  sensorsResume();
-  storageBeginMaintenance();
-
+}
+void beginMaintenance(mm::TimeUs now) {
+  // Only a qualified physical long press can call this function.
+  maintenanceEnd=now+mm::MAINTENANCE_US;
   activity=Activity::Connecting;
+  clearCycle();
+  sleepLogEnabled=false;
+  sensorsResume();
+  if (benchDisplay) displayResumePanel();
+  storageBeginMaintenance();
+  Serial.printf("[MAINT] physical entry lease_us=%llu deadline_us=%llu\n",
+      (unsigned long long)mm::MAINTENANCE_US,(unsigned long long)maintenanceEnd);
   wifiBegin();
 }
-void countdownPoll() {
-  const auto now=nowUs();
-  if (digitalRead(WAKE_BTN_PIN)==LOW) { abortCountdown("button held"); return; }
+void endMaintenance() {
+  // Do not attempt an unqualified live radio handover. The software reset
+  // terminates radio state and the next boot defaults to autonomous BENCH.
+  if (activity==Activity::Maintenance) otaStop();
+  clearCycle();
+  Serial.println("[MAINT] EXPIRED; reset to autonomous cycle; no lease renewal");
+  Serial.flush();
+  esp_restart();
+}
+void sleepFault(const char* why) {
+  clearCycle();
+  sleepLogEnabled=false;
+  hardwareCancelBenchSleep();
+  sensorsResume();
+  activity=Activity::SleepFault;
+  retryAt=nowUs()+mm::BENCH_AWAKE_US;
+  shown=999;
+  Serial.printf("[SLEEP] FAULT %s; radios stay off; retry in 30s\n",why);
+}
+void sleepPoll(mm::TimeUs now) {
   if (mm::log::sleepLogDue(sleepLogEnabled,sleepLogAttempted,benchCycle,now)) {
     sleepLogAttempted=true;
-    // No retries, no radio, no sleep cancellation on log failure.
     sleepLogSuccess=storageSleepSample(otaBootId(),benchCycle);
   }
-  if (now>=countdownEnd) {
-    if (!sensorsQuiesce()) { abortCountdown("MPU sleep unverified"); return; }
-    if (!displaySleepCountdown(0)) { abortCountdown("display unavailable"); return; }
-    if (!radiosOff() || !hardwareArmBenchSleep()) { abortCountdown("arm failed"); return; }
-    if (!hardwareButtonReleased(nowUs()) || nowUs()>mm::BENCH_AWAKE_US+1000000ULL) {
-      abortCountdown("button or awake deadline"); return;
+  if (now>=awakeEnd) {
+    if (!sensorsQuiesce()) { sleepFault("MPU sleep unverified"); return; }
+    if (benchDisplay && !displaySleepCountdown(0))
+      Serial.println("[TFT] sleep emoji unavailable; sleep continues");
+    if (!radiosOff()) { sleepFault("radio not off"); return; }
+    // A stuck/late-held switch must never cause immediate repeated EXT0 wakes.
+    bool ext0=hardwareButtonReleased(nowUs());
+    if (!hardwareArmBenchSleep(sleepUs,ext0)) {
+      if (!ext0 || hardwareButtonReleased(nowUs())) { sleepFault("arm failed"); return; }
+      hardwareCancelBenchSleep();
+      ext0=false;
+      if (!hardwareArmBenchSleep(sleepUs,false)) { sleepFault("timer arm failed"); return; }
+    }
+    if (ext0 && !hardwareButtonReleased(nowUs())) {
+      hardwareCancelBenchSleep();
+      ext0=false;
+      if (!hardwareArmBenchSleep(sleepUs,false)) { sleepFault("timer rearm failed"); return; }
     }
     benchMagic=mm::log::sleepLogContinue(sleepLogEnabled,sleepLogSuccess,benchCycle)?BENCH_LOG_MAGIC:BENCH_MAGIC;
     priorAwakeUs=nowUs();
-    Serial.printf("[SLEEP] cycle=%lu timer=30s ext0=GPIO13 LOW pre_sleep_us=%llu; TFT retained\n",
-        (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
+    Serial.printf("[SLEEP] cycle=%lu timer_ms=%llu ext0=%s pre_sleep_us=%llu; TFT retained if available\n",
+        (unsigned long)benchCycle,(unsigned long long)(sleepUs/1000),
+        ext0?"GPIO13 LOW":"off (button held)",(unsigned long long)priorAwakeUs);
+    Serial.flush();
     esp_deep_sleep_start();
     return;
   }
-  // Normal splash until the final five seconds of the existing awake budget.
-  if (countdownEnd-now>5000000ULL) {
+  const auto remain=awakeEnd-now;
+  const unsigned seconds=unsigned((remain+999999ULL)/1000000ULL);
+  if (remain<=5000000ULL) {
+    if (!sensorsQuiesce()) { sleepFault("MPU sleep unverified"); return; }
+    if (seconds!=shown) {
+      shown=seconds;
+      if (benchDisplay) displaySleepCountdown(seconds);
+      Serial.printf("[SLEEP] countdown=%u\n",seconds);
+    }
+    return;
+  }
+  if (benchDisplay && intro && now<2000000ULL) {
     displayPoll(SplashMode::BenchAwake);
     return;
   }
-  if (!sensorsQuiesce()) { abortCountdown("MPU sleep unverified"); return; }
-  const unsigned seconds=unsigned((countdownEnd-now+999999ULL)/1000000ULL);
   if (seconds!=shown) {
     shown=seconds;
-    if (!displaySleepCountdown(seconds)) { abortCountdown("display unavailable"); return; }
-    Serial.printf("[SLEEP] countdown=%u\n",seconds);
+    float temperature=NAN, humidity=NAN;
+    sensorsBenchEnvironment(now,temperature,humidity);
+    if (benchDisplay) displayBenchLive(seconds,hardwareBenchVoltage(now),temperature,humidity);
   }
 }
 }
 
 void setup() {
   const auto cause=esp_sleep_get_wakeup_cause();
-  mm::log::identityBoot(esp_reset_reason()==ESP_RST_DEEPSLEEP &&
-      (cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1));
+  const bool deep=esp_reset_reason()==ESP_RST_DEEPSLEEP &&
+      (cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
+  mm::log::identityBoot(deep);
   hardwareBegin(nowUs());
   Serial.begin(115200);
   Serial.printf("[BOOT] MOTO-MATE V" MOTO_MATE_VERSION " wake=%d\n",int(cause));
   hardwareReportBoot();
   settingsBegin();
-  clockBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
-  if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) {
+  const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
+  const auto& cfg=settingsCurrent();
+  hardwareGestureTiming(mm::TimeUs(cfg.double_click_ms)*1000ULL,mm::TimeUs(cfg.long_press_ms)*1000ULL);
+  entryArmed=(deep && cause==ESP_SLEEP_WAKEUP_EXT0) || digitalRead(WAKE_BTN_PIN)==HIGH;
+  clockBegin(deep);
+  if (bench) {
     rtc8563Begin();
-    sensorsBegin(cause==ESP_SLEEP_WAKEUP_TIMER || cause==ESP_SLEEP_WAKEUP_EXT0 || cause==ESP_SLEEP_WAKEUP_EXT1);
+    sensorsBegin(deep);
   }
   diagnosticSchedule.start(nowUs());
   otaInit();
-  const bool bench=settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench;
-  observeWakeLook=bench;
-  const auto wakeCause=cause==ESP_SLEEP_WAKEUP_TIMER?mm::WakeCause::Timer:
-      cause==ESP_SLEEP_WAKEUP_EXT0?mm::WakeCause::Button:
-      cause==ESP_SLEEP_WAKEUP_UNDEFINED?mm::WakeCause::Cold:mm::WakeCause::Other;
-  wakeLook.begin(0,wakeCause); // deadline includes setup, not only loop time
-  if (observeWakeLook) Serial.printf("[WAKE LOOK] SHADOW boot=%u deadline_us=%llu; no actuation\\n",
-      unsigned(wakeCause),(unsigned long long)wakeLook.deadline());
-  const bool qualifiedTimer=esp_reset_reason()==ESP_RST_DEEPSLEEP && cause==ESP_SLEEP_WAKEUP_TIMER;
-  const bool continuing=bench && qualifiedTimer &&
+  const bool continuing=bench && deep && cause==ESP_SLEEP_WAKEUP_TIMER &&
       (benchMagic==BENCH_MAGIC || benchMagic==BENCH_LOG_MAGIC) && benchCycle>0 && benchCycle<0xFFFFFFFFUL;
-  const bool requested=bench && mm::benchSleepActive(settingsCurrent());
+  const bool requested=bench && mm::benchSleepActive(cfg);
   sleepLogEnabled=(continuing && benchMagic==BENCH_LOG_MAGIC) ||
-    (requested && settingsCurrent().benchSleepLog && cause==ESP_SLEEP_WAKEUP_UNDEFINED);
-  if(!continuing || !sleepLogEnabled) storageSleepForget();
-  bool consumed=!requested;
+      (requested && cfg.benchSleepLog && cause==ESP_SLEEP_WAKEUP_UNDEFINED);
+  if (!continuing) clearCycle();
+  else if (!sleepLogEnabled) storageSleepForget();
   if (requested) {
-    auto next=settingsCurrent();
+    auto next=cfg;
     next.benchSleep=false; next.benchSleepLog=false;
-    consumed=settingsSave(next);
+    if (!settingsSave(next)) { sleepLogEnabled=false; storageSleepForget(); }
   }
-  // Timer wake alone may repeat the test. Button wake, reset and power loss
-  // clear the RTC test state and return to the existing OTA maintenance path.
-  if (!continuing) {
-    benchMagic=0;
-    benchCycle=0;
-    priorAwakeUs=0;
-  }
-  if (consumed && (continuing || (requested && cause==ESP_SLEEP_WAKEUP_UNDEFINED)) &&
-      digitalRead(WAKE_BTN_PIN)==HIGH && radiosOff()) {
-    ++benchCycle;
-    displayBegin(false);
-    if (nowUs()<mm::BENCH_AWAKE_US) {
-      countdownEnd=mm::BENCH_AWAKE_US;
-      activity=Activity::BenchCountdown;
-      Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
-      Serial.printf("[SLEEP] BENCH 30/30 cycle=%lu prior_awake_us=%llu; button cancels\n",
-          (unsigned long)benchCycle,(unsigned long long)priorAwakeUs);
-      return;
-    }
-    abortCountdown("setup exceeded budget");
-    return;
-  }
-  benchMagic=0;
-  benchCycle=0;
-  priorAwakeUs=0;
-  storageSleepForget();
-  if (requested || continuing) Serial.println("[SLEEP] CANCEL request clear, button or radio check failed");
-  if (bench) displayBegin(cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON);
-  storageBeginMaintenance();
-  wifiBegin();
+  benchDisplay=bench && settingsHealthy();
+  // V1.37 also sleeps safely in unqualified recovery, no screen or automatic radio.
+  awakeEnd=benchDisplay?mm::TimeUs(cfg.bench_awake_ms)*1000ULL:mm::BENCH_AWAKE_US;
+  sleepUs=benchDisplay?mm::TimeUs(cfg.bench_sleep_ms)*1000ULL:mm::BENCH_SLEEP_US;
+  ++benchCycle;
+  intro=benchDisplay && cause==ESP_SLEEP_WAKEUP_UNDEFINED && esp_reset_reason()==ESP_RST_POWERON;
+  if (benchDisplay) displayBegin(intro);
+  Serial.printf("[BENCH] %s cycle=%lu awake_ms=%llu sleep_ms=%llu prior_awake_us=%llu; Wi-Fi OFF; BLE port pending\n",
+      benchDisplay?"NORMAL":"RECOVERY", (unsigned long)benchCycle,
+      (unsigned long long)(awakeEnd/1000),(unsigned long long)(sleepUs/1000),
+      (unsigned long long)priorAwakeUs);
+  Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
+  if (!radiosOff()) sleepFault("unexpected radio state at boot");
 }
 
 void loop() {
-  resourcesObserveLoop(nowUs());
+  const auto now=nowUs();
+  resourcesObserveLoop(now);
   if (otaRebootPending()) { otaPoll(); vTaskDelay(1); return; }
-  hardwarePoll(nowUs());
-  wakeLookObserve(nowUs());
-  if (activity!=Activity::BenchCountdown || nowUs()+5000000ULL<countdownEnd) sensorsPoll(nowUs());
+  hardwarePoll(now);
+  const auto gesture=hardwareTakeGesture();
+  if (!entryArmed && hardwareButtonReleased(nowUs())) entryArmed=true;
+  const bool normal=activity==Activity::BenchAwake || activity==Activity::SleepFault;
+  if (gesture!=mm::Gesture::None) {
+    Serial.printf("[BUTTON] gesture=%u at_us=%llu\n",unsigned(gesture),(unsigned long long)now);
+    if (normal && entryArmed && gesture==mm::Gesture::Long) {
+      beginMaintenance(nowUs());
+    }
+  }
+  if (maintenanceEnd && nowUs()>=maintenanceEnd) { endMaintenance(); return; }
+  if (activity!=Activity::BenchAwake || (nowUs()<awakeEnd && awakeEnd-nowUs()>5000000ULL))
+    sensorsPoll(nowUs());
   if (settingsHealthy() && mm::verboseActive(settingsCurrent()) && diagnosticSchedule.due(nowUs())) {
     Serial.printf("[DIAG] uptime_us=%llu%s\n",(unsigned long long)nowUs(),hardwareStatus().c_str());
   }
-  if (activity==Activity::BenchCountdown) {
-    countdownPoll();
-    vTaskDelay(1);
-    return;
-  }
   switch (activity) {
-    case Activity::BenchCountdown: break;
+    case Activity::BenchAwake:
+      sleepPoll(nowUs());
+      break;
+    case Activity::SleepFault:
+      if (nowUs()>=retryAt) {
+        ++benchCycle; awakeEnd=nowUs()+mm::BENCH_AWAKE_US;
+        activity=Activity::BenchAwake;
+      }
+      break;
     case Activity::Connecting:
       if (wifiPoll()) {
         if (wifiConnected()) {
-          if(settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) storageRecoverMaintenance();
-          otaStart(); activity=Activity::Maintenance;
-        }
-        else { retryAt=nowUs()+30000000ULL; activity=Activity::Retry; }
+          if (settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench) storageRecoverMaintenance();
+          if (nowUs()<maintenanceEnd) { otaStart(maintenanceEnd); activity=Activity::Maintenance; }
+        } else { retryAt=nowUs()+30000000ULL; activity=Activity::Retry; }
       }
       break;
     case Activity::Maintenance:
@@ -224,6 +229,7 @@ void loop() {
       if (nowUs()>=retryAt) { wifiBegin(); activity=Activity::Connecting; }
       break;
   }
-  displayPoll(activity==Activity::Maintenance ? SplashMode::Maintenance : SplashMode::Initialising);
+  if (maintenanceEnd && benchDisplay)
+    displayPoll(activity==Activity::Maintenance?SplashMode::Maintenance:SplashMode::Initialising);
   vTaskDelay(1);
 }
