@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.46 dynamic motion and maintenance expiry PASS — 2026-11-27
+
+Owner serial shows changing accel and gyro during movement, Y gyro -147.90 to +91.44dps observed, followed by stable accel approximately (0.064,0.172,1.074)g and gyro X approximately1.7dps, Y/Z near zero. Motion response PASS, absolute orientation and scale calibration not certified. Maintenance expired with no renewal, software reboot V1.46 into autonomous BENCH, BLE advertising identity b12a7ec1 init255ms, I2C devices reidentified and configuration verified, both fresh samples resumed, SHT CRC valid throughout; final shown temp27.19C RH47.31%. No MPU sleep_verified or complete subsequent sleep cycle yet in supplied excerpt. Actual current unmeasured. FIELD disabled; no firmware changes.
+
+
 ## V1.46 owner OTA and both sensors live PASS — 2026-11-27
 
 Owner serial confirms OTA committed 1551552 bytes, original splash mode4, actual boot V1.46, RTC retained maintenance lease107307ms, WiFi1046ms RSSI-29 8.5dBm/800ms guard. Shared I2C GPIO6/7 idle HIGH, 100kHz, SHT40 0x44 ACK, MPU 0x68 ACK WHO_AM_I0x74, RTC0x51 and alternate0x69 NACK expected. MPU6515-compatible configuration verified, warmup and live accel/gyro PASS. First SHIT40 27.52C 48.92% CRC OK; subsequent repeated valid 27.41–27.52C 48.67–50.31% RH. MPU repeated X0.061–0.068g Y0.014–0.019g Z1.084–1.090g, gyro X1.66–1.80dps, Y and Z near zero. Repeating diagnostics PASS. If stationary, gravity norm ~1.086–1.092g and X gyro ~1.7dps indicate offset/scale calibration needed; no assumption of stationary orientation certified. Four-wire hookup works, no AD0 change. Sleep quiesce readback, physical movement/tilt response, calibration, actual current and OSA host receipt pending. No firmware change. FIELD disabled.
