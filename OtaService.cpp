@@ -438,6 +438,7 @@ void otaStop() {
   server.stop();
 }
 bool otaRebootPending() { return rebootAt != 0; }
+bool otaBusy() { return receiving || complete || rebootAt || Update.isRunning(); }
 void otaPoll() {
   if (rebootAt) {
     if (uint64_t(esp_timer_get_time())>=rebootAt) {
