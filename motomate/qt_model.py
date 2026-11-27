@@ -1,7 +1,7 @@
 """Pure host-side presentation rules; never communicates with the motorcycle."""
 import math
 
-GUI_VERSION = "2.06"
+GUI_VERSION = "2.07"
 ROUTES = ("/moto/status", "/moto/log/status", "/moto/power/status", "/moto/bench/status", "/moto/maintenance/status")
 COLLECT = "/moto/log/start"
 MAINT = "/moto/maintenance/"
@@ -57,11 +57,16 @@ def live_labels(status):
         if type(value) in (float, int) and math.isfinite(value) and low <= value <= high:
             return value
         return None
-    rail = number("protected_rail_estimate_mv", 0, 65535)
+    simulated = isinstance(data, dict) and (data.get("voltage_source") == "synthetic_bench" or data.get("firmware_version") == "1.48")
+    rail = number("synthetic_voltage_mv", 0, 20000) if simulated else number("protected_rail_estimate_mv", 0, 65535)
+    # Compatibility with older OSA: V1.48 always emits the simulated source in BLE.
+    if simulated and rail is None:
+        rail = number("protected_rail_estimate_mv", 0, 20000)
     temp = number("temperature_c", -40, 125)
     rh = number("humidity_pct", 0, 100)
+    note = "* FAKE ADC • BENCH" if simulated else "* Protected rail estimate • uncalibrated"
     return (f"{rail/1000:.2f} V*" if rail is not None else "—.— V",
-            "* Protected rail estimate • uncalibrated" if rail is not None else "No fresh qualified ADC sample",
+            note if rail is not None else "No fresh qualified ADC sample",
             f"{temp:.1f} °C\nTemperature" if temp is not None else "— °C\nTemperature",
             f"{rh:.0f} %\nHumidity" if rh is not None else "— %\nHumidity")
 
