@@ -15,7 +15,11 @@ RTC_DATA_ATTR mm::Vec3 savedRef={};
 bool enabled=false,paused=false,shtPending=false,shtValid=false,mpuReady=false,mpuValid=false,mpuAwakePossible=false;
 const char* shtState="disabled";
 const char* mpuState="disabled";
-uint8_t mpuAddress=MPU6050_ADDRESS;
+uint8_t mpuAddress=MPU6050_ADDRESS, mpuWho=0;
+// Linux inv_mpu6050 identifies 0x74 as MPU6515 (MPU6500 register map).
+// Only these explicitly supported identities may be configured.
+bool supportedMpu(uint8_t id) { return id==0x68 || id==0x74; }
+const char* mpuModel() { return mpuWho==0x68?"MPU6050":mpuWho==0x74?"MPU6515-compatible":"unknown"; }
 bool mpuAddressLocked=false, shtReported=false, mpuReported=false;
 uint64_t shtNext=0,shtReadAt=0,shtAt=0,mpuNext=0,mpuAt=0;
 float temp=0,rh=0;
@@ -49,7 +53,7 @@ bool mpuSetup() {
     const uint8_t alternate=MPU6050_ADDRESS==0x68?0x69:0x68;
     if (i2cProbe(alternate)==0) {
       uint8_t id=0;
-      if (i2cReadRegs(alternate,0x75,&id,1) && id==0x68) {
+      if (i2cReadRegs(alternate,0x75,&id,1) && supportedMpu(id)) {
         mpuAddress=alternate;
         probe=0;
         Serial.printf("[MYPOO] alternate address 0x%02X verified; no AD0 wiring change\n",unsigned(mpuAddress));
@@ -59,13 +63,15 @@ bool mpuSetup() {
   if (probe) { mpuState=probe==2?"absent":"probe_error"; return false; }
   uint8_t who=0;
   if (!i2cReadRegs(mpuAddress,0x75,&who,1)) { mpuState="read_error"; return false; }
-  if (who!=0x68) { mpuState="wrong_id"; return false; }
+  mpuWho=who;
+  if (!supportedMpu(who)) { mpuState="wrong_id"; return false; }
   mpuAddressLocked=true;
   mpuAwakePossible=true;
   // +/-2g, +/-250 degrees/s, filtered bandwidth, 50 Hz output.
   if (!regWrite(0x6b,0x01) || !regWrite(0x6c,0x00)
       || !regWrite(0x1a,0x03) || !regWrite(0x19,19)
-      || !regWrite(0x1b,0) || !regWrite(0x1c,0)) {
+      || !regWrite(0x1b,0) || !regWrite(0x1c,0)
+      || (who==0x74 && !regWrite(0x1d,0x03))) {
     mpuState="config_error"; return false;
   }
   uint8_t cfg[4]={},power[2]={};
@@ -74,6 +80,13 @@ bool mpuSetup() {
       cfg[0]!=19 || cfg[1]!=3 || cfg[2]!=0 || cfg[3]!=0 || power[0]!=1 || power[1]!=0) {
     mpuState="config_readback_failed"; return false;
   }
+  if (who==0x74) {
+    uint8_t accelCfg2=0;
+    if (!i2cReadRegs(mpuAddress,0x1d,&accelCfg2,1) || (accelCfg2&0x0f)!=0x03) {
+      mpuState="config_readback_failed"; return false;
+    }
+  }
+  Serial.printf("[MYPOO] identified %s WHO_AM_I=0x%02X configuration verified\n",mpuModel(),unsigned(mpuWho));
   mpuState="warming";
   return true;
 }
@@ -199,6 +212,8 @@ String sensorsJson() {
   s+=",\"temperature_c\":"+number(sv,temp)+",\"humidity_pct\":"+number(sv,rh)+"}";
   s+=String(",\"mpu6050\":{\"enabled\":")+flag(MPU6050_ENABLED)+",\"state\":\""+mpuState+"\",\"valid\":"+flag(mv);
   s+=",\"address\":"+String(unsigned(mpuAddress));
+  s+=",\"who_am_i\":"+String(unsigned(mpuWho));
+  s+=String(",\"model\":\"")+mpuModel()+"\"";
   s+=",\"accel_g\":"+vector(mv,accel)+",\"gyro_dps\":"+vector(mv,gyro);
   s+=String(",\"reference_ready\":")+flag(reference.ready())+",\"gravity_reference_g\":"+vector(reference.ready(),reference.reference());
   s+=",\"gravity_delta_g\":"+number(mv&&reference.ready(),reference.delta(accel))+"}}";
