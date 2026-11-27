@@ -1,5 +1,10 @@
 # Moto-Mate — AI Handover
 
+## V1.36 owner build evidence — 2026-11-27
+
+Owner pulled main and ran native settings regression: PASS (37 fields, 160 bytes, migration codec, validation, corruption, readiness). Arduino build PASS: 953593/1966080 B flash (48%), 48224/327680 B static RAM (14%), 279456 B remaining. Fixed build receipt schema1, motomate.ino.bin V1.36, 954192 B, MD5 1e14b8e9074a2d21e761f1d0bba7f735, SHA256 52fd4fc8d2c442b23117b940b58a219f7f4ed7acc7afb1b98ff4897b58cb9c23. OTA not yet reported. Next: confirm existing BENCH settings healthy and no bench sleep/log arm; owner performs OTA using existing OSA/GUI commissioning path, observe V1.36 boot and NVS migrated schema=2, read settings and reset to verify loaded/unchanged. No physical migration/persistence PASS yet, no FIELD enable. Temporary v1.36-settings branch already integrated; delete after owner test. No firmware change.
+
+
 ## Locked owner Git rule — 2026-11-27
 
 Work directly on main. Never create branches. Test changes and keep commits scoped; owner controls physical validation and deployment. V1.36 was already fast-forwarded to main at 2feb858 before owner hardware testing; the temporary v1.36-settings branch is redundant and should be deleted after the owner test, not merged again or used for further work. No firmware changes in this documentation checkpoint.
