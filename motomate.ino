@@ -185,6 +185,7 @@ void setup() {
     if (!settingsSave(next)) { sleepLogEnabled=false; storageSleepForget(); }
   }
   benchDisplay=bench && settingsHealthy();
+  storageAutoBegin(benchDisplay && !sleepLogEnabled,deep && cause==ESP_SLEEP_WAKEUP_TIMER);
   // V1.37 also sleeps safely in unqualified recovery, no screen or automatic radio.
   awakeEnd=benchDisplay?mm::TimeUs(cfg.bench_awake_ms)*1000ULL:mm::BENCH_AWAKE_US;
   sleepUs=benchDisplay?mm::TimeUs(cfg.bench_sleep_ms)*1000ULL:mm::BENCH_SLEEP_US;
@@ -195,7 +196,7 @@ void setup() {
       benchDisplay?"NORMAL":"RECOVERY", (unsigned long)benchCycle,
       (unsigned long long)(awakeEnd/1000),(unsigned long long)(sleepUs/1000),
       (unsigned long long)priorAwakeUs);
-  Serial.printf("[LOG] sleep commissioning=%s\n",sleepLogEnabled?"armed":"off");
+  Serial.printf("[LOG] sleep commissioning=%s autonomous=%s\n",sleepLogEnabled?"armed":"off",benchDisplay && !sleepLogEnabled?"enabled":"disabled");
   if (!radiosOff()) sleepFault("unexpected radio state at boot");
   else if (benchDisplay && resumedDeadline>nowUs()) {
     maintenanceEnd=resumedDeadline;
@@ -263,6 +264,13 @@ void loop() {
       if (nowUs()>=retryAt) { wifiBegin(); activity=Activity::Connecting; }
       break;
   }
+  // Single cooperative writer: after synchronous HTTP, never during OTA or final sleep countdown.
+  const auto logNow=nowUs();
+  const bool logAwake=activity==Activity::BenchAwake && logNow<awakeEnd && awakeEnd-logNow>6000000ULL;
+  const bool logMaint=maintenanceEnd && logNow<maintenanceEnd && maintenanceEnd-logNow>5000000ULL;
+  if (benchDisplay && settingsHealthy() && settingsCurrent().profile==mm::Profile::Bench &&
+      !sleepLogEnabled && !settingsCurrent().benchSleep && !otaBusy() && (logAwake || logMaint))
+    storageAutoPoll(logNow,otaBootId(),logMaint);
   if (maintenanceEnd && benchDisplay && !otaRebootPending() && nowUs()<maintenanceEnd)
     displayMaintenance(activity==Activity::Maintenance,maintenanceEnd);
   vTaskDelay(1);
