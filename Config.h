@@ -1,7 +1,7 @@
 #pragma once
 #include <Arduino.h>
 
-#define MOTO_MATE_VERSION "1.44"
+#define MOTO_MATE_VERSION "1.45"
 
 // Pins (ESP32-S3 Super Mini)
 #define VOLTAGE_PIN       1   // GPIO 1
