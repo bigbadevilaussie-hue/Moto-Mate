@@ -1,5 +1,10 @@
 # Moto-Mate — agreed operating design and development direction
 
+## Owner clarification — 24/7 monitor scheduling (2026-11-27)
+
+Owner states the 24/7 monitor only stops for OTA, riding and deep sleep. Default background acquisition/logging while otherwise awake, including idle maintenance, Rider Ready and Battery Test; ride logger takes over during riding. Resume monitor eligibility after those pauses, no extra wake, no fabricated catch-up, independent of serial verbosity. V/T/H coherent sample; voltage qualification still pending, T/H live and connected to existing commissioning writer. This changes the prior log-contract direction of periodic monitor samples during riding; production scheduling contract and transition/event semantics must be reconciled before implementation, existing binary schema unchanged. Existing nominal cadence remains unchanged pending implementation review. V1.46 normal BENCH writing off; no firmware change or FIELD enable here.
+
+
 ## V1.37 — owner-priority normal BENCH loop (2026-11-27)
 
 Supersedes previous V1.37 shadow-only gesture plan. Default healthy BENCH boot/reset/timer wake runs real configured awake/sleep (defaults 30000/30000 ms) without arming bench_sleep. Awake includes boot; live uncalibrated protected-rail estimate, fresh SHT temperature/humidity or --, remaining seconds, then last five seconds sleepy countdown and retained static emoji across actual deep sleep. Existing safe GPIO holds, verified MPU quiesce, timer wake and released GPIO13 EXT0 used. Held/late button at sleep boundary falls back to timer-only to avoid immediate wake loop; no auto Wi-Fi on faults. Failed safe sleep arm or MPU quiesce enters radio-free 30s retry, not a proven low-current state. TFT init failure does not prevent sleep. Explicit legacy sleep log arm still consumed once, max three qualified timer-wake samples, normal cycle no routine file writes; no change to locked schema or identity. FIELD still disabled, recovery boot no normal display or automatic Wi-Fi.
