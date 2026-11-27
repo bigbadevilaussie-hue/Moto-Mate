@@ -44,6 +44,7 @@ lgfx::LGFX_Sprite intro(&tft);
 bool ready = false;
 bool drawn = false;
 bool animating = false;
+unsigned sleepShown=999;
 SplashMode lastMode = SplashMode::Initialising;
 SplashMode introMode = SplashMode::Initialising;
 uint32_t introStart = 0;
@@ -134,6 +135,7 @@ void displayBegin(bool animate) {
 
 void displayPoll(SplashMode mode) {
   if (!ready) return;
+  sleepShown=999;
   if (animating) {
     const uint32_t now = millis();
     const uint32_t elapsed = now - introStart;
@@ -168,7 +170,7 @@ bool displaySleepCountdown(unsigned seconds) {
   if (!ready) return false;
   stopIntro();
   drawn=false;
-  static unsigned previous=999;
+  unsigned& previous=sleepShown;
   if (previous==seconds) return true;
   const uint16_t black=0x0000, yellow=0xFEC0, shade=0xD480, white=0xFFFF, blue=0x65FF;
   if (previous==999 || seconds>previous) {
@@ -214,6 +216,7 @@ void displayResumePanel() {
 
 void displayBenchLive(unsigned seconds,float voltage,float temperature,float humidity) {
   if (!ready) return;
+  sleepShown=999;
   stopIntro();
   static bool live=false;
   const uint16_t black=0x0000, white=0xffff, cyan=0x07ff, yellow=0xffe0;
