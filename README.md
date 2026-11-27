@@ -1,5 +1,10 @@
 # Moto-Mate MkII
 
+## V1.39 owner OTA and physical maintenance entry PASS — 2026-11-27
+
+Owner serial extends V1.38 autonomous evidence through cycle5, cycles3/4 pre-sleep30006797 us, BLE startups238/237 ms. Physical GPIO13 press at18302361 us, long gesture3 at20302361 us (exact2000000 us), release21318361 us, hold3016000 us. BLE shutdown PASS before storage mount and maintenance admission, lease180000000 us deadline200302487 us; existing 800ms guard, 8.5dBm TX ceiling and first Wi-Fi attempt1040ms RSSI-49 dBm PASS. OTA accepted1545744 B, image committed, software reset and actual V1.39 boot confirmed; schema2 BENCH loaded, normal30/30 without automatic Wi-Fi, BLE advertising identity2277d57a startup252ms. OTA reboot does not renew lease. Physical idle 180s expiry without OTA still untested; V1.39 flicker visual acceptance, full post-update sleep cycle and OSA live telemetry not yet supplied. Sensors still pending physical connection. No firmware changes in this evidence checkpoint; FIELD disabled.
+
+
 ## V1.39 owner build PASS — 2026-11-27
 
 Owner compile PASS: flash1545149/1966080 B, static RAM69660/327680 B, remaining258020 B. Fixed build receipt schema1, version1.39, motomate.ino.bin 1545744 B, MD5 1129ce312c272fde2113511e74432347, SHA256 4cb112e54b499c05dba90cc96f56f2eda966cf481aa071408100ebf007333301. Flicker fix compiled; physical display acceptance and OTA pending. V1.38 last serial-confirmed running; owner must physically long press GPIO13 to enter maintenance before OTA. New firmware boots Wi-Fi-off, so old OSA verifier may time out; use serial boot and do not blindly retry. GPIO4 backlight drive unchanged; sensor attachment pending. No FIELD enable or firmware changes in evidence checkpoint.
