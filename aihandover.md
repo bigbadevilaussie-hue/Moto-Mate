@@ -1,5 +1,46 @@
 # Moto-Mate — AI Handover
 
+## Deferred task — recovered Bike-Mate V2.10Burn fake voltage reference (2026-11-29)
+
+**Documentation only. Do not implement until the owner directs it.** Owner rejected V1.48/V1.49's invented fake ADC architecture; both repositories were restored to exact pre-fake-ADC source (Moto-Mate rollback 66b6bbd, OSA rollback de9ce5e). V1.47 monitor remains baseline. Read README Rules in full before any patch.
+
+### Recovered donor implementation
+
+Source: owner-supplied historical conversation "The Bike- Mate", complete Sensors.cpp V2.10Burn, including final version with FAKE_TEMP. Historical handover identified this as the four-test burn-in. The original code is recovered from the conversation, not current Bike-Mate Git history (which begins at V4.04). No hardware PASS receipt for V2.10Burn in this excerpt.
+
+Original voltage helper (verbatim):
+
+```cpp
+#define FAKE_VOLTAGE 1
+#if FAKE_VOLTAGE
+extern uint32_t totalSeconds;
+
+static void fakeVoltageBurn(uint32_t &test, uint32_t &elapsed, uint32_t &testLen, float &v) {
+  uint32_t cycleSecs = totalSeconds % 300;
+  uint32_t start;
+  if      (cycleSecs <  30) { test = 1; v = 12.9; start =   0; testLen =  30; }
+  else if (cycleSecs <  90) { test = 2; v = 14.1; start =  30; testLen =  60; }
+  else if (cycleSecs < 180) { test = 3; v = 12.7; start =  90; testLen =  90; }
+  else                      { test = 4; v = 12.5; start = 180; testLen = 120; }
+  elapsed = cycleSecs - start;
+}
+#endif
+```
+
+In the original readSensors() fake branch: call fakeVoltageBurn(), assign latestBatteryVoltage = fakeV, set latestRawVoltage/latestMilliVolts to zero, read temperature (later optional FAKE_TEMP fixed 25 C for the bare donor board), emit [FAKE] cycle/test/voltage/elapsed diagnostic, return. Real ADC branch unchanged under #else. Existing RTC-retained totalSeconds supplied elapsed time; no new RTC state in Sensors.cpp. The original four-phase cycle was 12.9 V resting 30 s, 14.1 V running 60 s, 12.7 V after ride 90 s, 12.5 V warning 120 s; repeat 300 s. Owner explicitly said no PANIC test and phase 3 must enter deep sleep naturally, not by a test-only sleep command. Historical V3.59 transcript also reports fake resting voltage 12.60 V in BENCH_MODE=0; independent of wake profile.
+
+### Future Moto-Mate implementation direction (not an approved patch)
+
+- Substitute only the voltage acquisition source. Same ordinary voltage consumer, same normal coordinator, start/stop detection, ride logger, monitor logger, BLE/display and sleep policy; no fake engine-state command or alternative state machine. Preserve the real ADC/calibration path when fake source is off. Real SHIT40 and MYPOO remain real.
+- V1.47 current acquisition is Hardware.cpp hardwarePoll() (250 ms BENCH ADC cadence) and hardwareBenchVoltage() (fresh protected-rail estimate). Inspect current source when authorised; use one common acquisition/snapshot path appropriate to the coordinator then in place, not separate ad hoc consumer-specific fake interfaces.
+- Fake source independent of BENCH/FIELD policy. Owner previously requested starting adjustable voltage 12.83 V and changing it in both modes; do not hardcode Moto-Mate's test values or assume the donor durations/thresholds are the final Moto-Mate scenario. Agree source selection, adjustable value and test-sequence controls with owner before writing code. The donor compile flag and scripted cycle are reference, not authority to invent a control interface. No new USB protocol, separate NVS namespace/key, GUI/OSA version sniffing or other changes on assumption. Use established settings contract if a settings change is approved.
+- Use existing elapsed-time ownership where available; do not transplant donor totalSeconds as if Moto-Mate already has it. V1.47 esp_timer resets per boot; RTC priorAwakeUs/benchCycle are not a general retained elapsed clock. Need verify actual retained clock semantics before choosing phase timing. A 300 s modulo cycle can skip phases at 300 s FIELD sleep, so qualify test scheduling against actual wake intervals; do not force wake/sleep or change protected timing just to make test pass.
+- Preserve locked logging schema and simulated-data provenance; do not mark physical ADC calibrated, mix synthetic data with real ride history, enable production FIELD, or permit external alerts/real battery protection authority on simulated data without explicit review. Existing FIELD lockout remains. Engine/ride coordinator not implemented at V1.47; fake acquisition alone cannot prove engine transitions.
+- Future verification: cold start at selected fake value, normal voltage consumer sees changes, engine start/stop and ride log through real state machine when implemented, monitor pauses during ride/OTA/sleep and resumes afterwards, post-ride natural sleep, retained sequence behaviour across real timer wakes, both profile policies when authorised, real ADC restoration and real T/H continuity. No PANIC burn-in. Test boundaries and clock progression; report actual serial/log/OTA evidence, not merely compilation.
+
+No firmware, settings, protocol, GUI, OSA, or donor changes for this note. No version bump.
+
+
 ## V1.47 — default BENCH monitor enabled (2026-11-27)
 
 Owner requested monitor on now. Normal healthy BENCH enables automatic schema-1 monitor SAMPLE at first eligible loop >=3s after boot, then every 300s monotonic if still awake; one sample per normal 30/30 timer wake (accelerated BENCH data, not 300s physical intervals). Independent RTC CRC checkpoint permits verified append across qualified timer wakes, 96-record batch cap selected to reduce small-file overhead, seal at cap or maintenance recovery; maintenance samples sealed immediately for existing collection. No new wake, no radio changes, no automatic formatting/deletion; existing storage reserve, exact checked writes and preservation on failure. No writes in OTA, final sleep boundary, recovery/fault or legacy explicit logging commission; skip when legacy maintenance writer active. Reset/OTA creates fresh eligibility; prior uncertain open files retained for maintenance recovery, no catch-up. T/H freshness and gravity validity already wired; unqualified battery voltage remains invalid and unknown UTC remains unknown. Real current, file decode/collection and reset/error qualification pending. Ride coordinator not implemented, FIELD disabled; ride exclusion is contract only until ride integration. Storage status adds auto_monitor and reports enabled/available instead of hardcoded writes disabled. Existing binary schema unchanged. Existing synchronous flash and HTTP timing not hard-real-time; bench write requires >6s awake margin, >5s maintenance margin. No changes to verbose policy in this release. Owner compile/OTA pending.
