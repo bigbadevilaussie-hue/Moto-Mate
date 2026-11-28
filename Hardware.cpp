@@ -1,6 +1,5 @@
 #include "Hardware.h"
 #include "Config.h"
-#include "Settings.h"
 #include <driver/gpio.h>
 #include <driver/rtc_io.h>
 #include <esp_sleep.h>
@@ -84,15 +83,7 @@ void hardwarePoll(mm::TimeUs now) {
 }
 void hardwareGestureTiming(mm::TimeUs doubleTap, mm::TimeUs longPress) { gestures.configure(doubleTap,longPress); }
 float hardwareBenchVoltage(mm::TimeUs now) {
-  (void)now;
-  uint16_t mv=0;
-  return hardwareSyntheticVoltage(mv)?float(mv)/1000.0f:NAN;
-}
-bool hardwareSyntheticVoltage(uint16_t& mv) {
-  return settingsFakeAdcGet(mv);
-}
-float hardwareBenchDisplayVoltage(mm::TimeUs now) {
-  return hardwareBenchVoltage(now);
+  return sampled && now>=sampleAt && now-sampleAt<=1000000ULL ? adcMv*0.0057f : NAN;
 }
 mm::Gesture hardwareTakeGesture() {
   const auto result=pendingGesture;
@@ -111,11 +102,6 @@ String hardwareStatus() {
       (unsigned long)((adcMv*57UL+5)/10),(unsigned long long)((esp_timer_get_time()-sampleAt)/1000));
   }
   String status(buf);
-  uint16_t syntheticMv=0;
-  if (hardwareSyntheticVoltage(syntheticMv)) {
-    status+=settingsCurrent().profile==mm::Profile::Bench?",\"voltage_source\":\"synthetic_bench\",\"synthetic_voltage_mv\":":",\"voltage_source\":\"synthetic_field_test\",\"synthetic_voltage_mv\":";
-    status+=String(unsigned(syntheticMv));
-  } else status+=",\"voltage_source\":\"synthetic_unavailable\",\"synthetic_voltage_mv\":null";
   char wake[320];
   const auto now=mm::TimeUs(esp_timer_get_time());
   snprintf(wake,sizeof(wake),

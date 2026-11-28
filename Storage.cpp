@@ -6,7 +6,6 @@
 #include "LogInventoryPolicy.h"
 #include <esp_attr.h>
 #include "BenchSensors.h"
-#include "Hardware.h"
 #include "MotoClock.h"
 #include "Config.h"
 #include <esp_sleep.h>
@@ -49,7 +48,7 @@ bool autoHeader(mm::log::Header& h,unsigned& count) {
   uint8_t mac[6]={};
   return decodeSleepCheckpoint(autoCheckpoint,sizeof(autoCheckpoint),h,count,AUTO_BATCH) &&
     !strcmp(logIdState,"valid") && h.generation==logId.generation &&
-    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==49 &&
+    h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==47 &&
     esp_efuse_mac_get_default(mac)==ESP_OK && !memcmp(mac,h.device_mac,6) &&
     verifySleepOpen(h,count);
 }
@@ -275,7 +274,7 @@ bool storageMonitorStart(uint64_t generation,uint32_t bootId,unsigned count) {
   if(strcmp(logIdState,"valid") || generation!=logId.generation || usedBytes>totalBytes ||
      totalBytes-usedBytes<=16384+4096) return false;
   MonitorSession next;
-  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=49;
+  next.header.kind=1; next.header.flags=1; next.header.fw_major=1; next.header.fw_minor=34;
   if(esp_efuse_mac_get_default(next.header.device_mac)!=ESP_OK) return false;
   next.header.generation=generation; next.header.opened_boot_id=bootId; next.header.nominal_period_ms=300000;
   next.target=count; next.active=true; next.state="sampling";
@@ -309,9 +308,7 @@ void storageMonitorPoll(uint64_t now) {
   p.type=1; p.state=0x46; // BENCH maintenance, no claim of riding or protection qualification
   p.utc_ms=clockLogUtcMs(p.validity);
   sensorsLogSample(now,sample,p.validity);
-  uint16_t fakeMv=0;
-  if(hardwareSyntheticVoltage(fakeMv)) { sample.battery_mv=fakeMv; p.validity|=1u<<2; }
-  else { storageMonitorCancel("synthetic ADC unavailable"); return; }
+  // ADC rail estimate is deliberately NOT a qualified battery voltage. No GPS yet.
   uint8_t record[mm::log::RECORD_BYTES];
   if(!mm::log::encode(p,sample,record)) { storageMonitorCancel("encode_failed_preserved"); return; }
   if(!monitor.records) {
@@ -348,11 +345,11 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
   if(ok) ok=esp_efuse_mac_get_default(mac)==ESP_OK;
   if(ok && cycle>1) {
     ok=resumed && count==cycle-1 && h.generation==logId.generation &&
-       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==49 &&
+       h.file_seq<=logId.reservedThrough && h.fw_major==1 && h.fw_minor==34 &&
        !memcmp(mac,h.device_mac,6) && verifySleepOpen(h,count);
   }
   if(ok && cycle==1) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=49;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=34;
     memcpy(h.device_mac,mac,6); h.generation=logId.generation;
     h.nominal_period_ms=300000; h.opened_boot_id=bootId;
   }
@@ -361,9 +358,7 @@ bool storageSleepSample(uint32_t bootId,uint32_t cycle) {
     Prefix p={}; Sample sample={}; uint8_t record[RECORD_BYTES];
     p.boot_id=bootId; p.mono_ms=uint32_t(now/1000); p.type=1; p.state=0x46;
     p.utc_ms=clockLogUtcMs(p.validity); sensorsLogSample(now,sample,p.validity);
-    uint16_t fakeMv=0;
-    ok=hardwareSyntheticVoltage(fakeMv);
-    if(ok) { sample.battery_mv=fakeMv; p.validity|=1u<<2; ok=encode(p,sample,record); }
+    ok=encode(p,sample,record);
     if(ok && !count) {
       h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
       ok=allocateSequence(h.generation,h.file_seq);
@@ -402,13 +397,7 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   p.state=maintenance?0x46:0x41;
   p.utc_ms=clockLogUtcMs(p.validity);
   sensorsLogSample(now,sample,p.validity);
-  // V1.49 automatic BENCH files exclusively carry the synthetic fixture voltage.
-  // Physical ADC values never enter this stream; real T/H retain their validity.
-  uint16_t fakeMv=0;
-  if (hardwareSyntheticVoltage(fakeMv)) {
-    sample.battery_mv=fakeMv;
-    p.validity|=1u<<2;
-  } else return; // refuse mixed-source file writes
+  // ADC remains an unqualified rail estimate, battery validity stays clear.
   storageBeginMaintenance();
   Header h={}; unsigned count=0;
   bool ok=mounted && storageSleepLogReady(logId.generation);
@@ -416,7 +405,7 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   if(ok && hadCheckpoint) ok=autoHeader(h,count);
   forgetAuto(); // consume before mutation
   if(ok && !hadCheckpoint) {
-    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=49;
+    h.kind=1; h.flags=1; h.fw_major=1; h.fw_minor=47;
     h.generation=logId.generation; h.nominal_period_ms=300000;
     h.opened_boot_id=bootId; h.opened_utc_ms=p.utc_ms; h.opened_mono_ms=p.mono_ms;
     ok=esp_efuse_mac_get_default(h.device_mac)==ESP_OK;
@@ -435,8 +424,8 @@ void storageAutoPoll(uint64_t now,uint32_t bootId,bool maintenance) {
   if(!ok) forgetAuto();
   autoState=ok?(seal?"sealed":"committed_open"):"failed_preserved";
   if(mounted) refreshSpace();
-  Serial.printf("[MONITOR] %s seq=%016llx records=%u validity=%04x V=%u mV SYNTHETIC elapsed_us=%llu; sleep policy unchanged\n",
-    autoState,(unsigned long long)h.file_seq,count,unsigned(p.validity),unsigned(fakeMv),
+  Serial.printf("[MONITOR] %s seq=%016llx records=%u validity=%04x elapsed_us=%llu; sleep policy unchanged\n",
+    autoState,(unsigned long long)h.file_seq,count,unsigned(p.validity),
     (unsigned long long)(esp_timer_get_time()-start));
 }
 void storageRecoverMaintenance() {
